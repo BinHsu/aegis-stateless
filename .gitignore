@@ -1,0 +1,45 @@
+# Local working files (operating notes, drafts, personal backlog — never committed)
+CLAUDE.md
+backlog.md
+_context/
+
+# Go build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/greeter
+/app/greeter
+vendor/
+
+# Terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!example.tfvars
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# AWS / secrets
+.env
+.env.*
+*.pem
+*.key
+.aws/
+credentials
+
+# Container / image artifacts
+*.tar
+*.tar.gz
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
