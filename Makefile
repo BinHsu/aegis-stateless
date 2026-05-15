@@ -36,13 +36,14 @@ TF_REGIONAL  := terraform/envs/regional
 # until regions.auto.tfvars.json is created.
 ACTIVE_REGIONS = $(shell jq -r '.regions | to_entries[] | select(.value.enabled) | .key' $(TFVARS_JSON) 2>/dev/null)
 
-.PHONY: help dev-setup fmt validate lint sec \
+.PHONY: help dev-setup pre-commit-install fmt validate lint sec \
         bootstrap regenerate-backend platform regional regional-one \
         all destroy-region destroy-platform clean-bin clean-backend
 
 help:
 	@echo "Targets:"
-	@echo "  dev-setup              Install pinned tflint/tfsec/kubeconform/hadolint/jq into ./bin/"
+	@echo "  dev-setup              Install pinned tools into ./bin/ + wire the pre-commit hook"
+	@echo "  pre-commit-install     Point git core.hooksPath at .githooks/ (done by dev-setup too)"
 	@echo "  fmt                    terraform fmt -recursive terraform/"
 	@echo "  validate               terraform validate in each env (no backend init)"
 	@echo "  lint                   tflint --recursive --chdir=terraform/"
@@ -62,6 +63,15 @@ help:
 
 dev-setup:
 	./scripts/install-tools.sh $(BIN)
+	@$(MAKE) --no-print-directory pre-commit-install
+
+# Wire git to the committed hook directory. `.githooks/pre-commit` then runs
+# on every `git commit` (fmt-check + gitleaks staged scan). Project-local —
+# no Python pre-commit framework, no host install.
+pre-commit-install:
+	git config core.hooksPath .githooks
+	@chmod +x .githooks/pre-commit
+	@echo ">>> git core.hooksPath -> .githooks/ (pre-commit hook active)"
 
 fmt:
 	terraform fmt -recursive terraform/

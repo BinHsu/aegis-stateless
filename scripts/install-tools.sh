@@ -26,6 +26,7 @@ TFSEC_VERSION=v1.28.11
 KUBECONFORM_VERSION=v0.6.7
 HADOLINT_VERSION=v2.12.0
 JQ_VERSION=1.7.1
+GITLEAKS_VERSION=8.18.4
 
 # ---- OS / arch detection ---------------------------------------------------
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')   # darwin | linux
@@ -143,6 +144,24 @@ curl -fsSL -o sha256sum.txt \
 verify_sha256 "$JQ_BIN" sha256sum.txt
 mv "$JQ_BIN" "$BIN/jq"
 chmod +x "$BIN/jq"
+
+# ---- gitleaks --------------------------------------------------------------
+# Secret scanner — used by the pre-commit hook (.githooks/pre-commit) and
+# the gitleaks CI job. Asset naming: gitleaks_<ver>_<os>_<arch>.tar.gz,
+# arch token is x64 (not amd64) / arm64.
+echo ">>> gitleaks ${GITLEAKS_VERSION} (${OS}/${ARCH})"
+case "$ARCH" in
+  amd64) GITLEAKS_ARCH=x64 ;;
+  arm64) GITLEAKS_ARCH=arm64 ;;
+esac
+GITLEAKS_TGZ="gitleaks_${GITLEAKS_VERSION}_${OS}_${GITLEAKS_ARCH}.tar.gz"
+curl -fsSL -o "$GITLEAKS_TGZ" \
+  "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${GITLEAKS_TGZ}"
+curl -fsSL -o gitleaks_checksums.txt \
+  "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+verify_sha256 "$GITLEAKS_TGZ" gitleaks_checksums.txt
+tar -xzf "$GITLEAKS_TGZ" -C "$BIN" gitleaks
+chmod +x "$BIN/gitleaks"
 
 # ---- done -----------------------------------------------------------------
 echo

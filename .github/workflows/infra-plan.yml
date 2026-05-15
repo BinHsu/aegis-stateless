@@ -37,6 +37,18 @@ jobs:
           echo "list=${list}" >> "$GITHUB_OUTPUT"
           echo "Active regions: ${list}"
 
+  gitleaks:
+    name: gitleaks-secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the scan sees the whole PR range
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   lint-validate:
     name: fmt-validate-lint-sec
     runs-on: ubuntu-latest
@@ -205,15 +217,16 @@ jobs:
     # all upstream jobs are green.
     name: summary
     runs-on: ubuntu-latest
-    needs: [lint-validate, plan-platform, plan-regional]
+    needs: [gitleaks, lint-validate, plan-platform, plan-regional]
     if: ${{ always() }}
     steps:
       - name: verify all upstream jobs succeeded
         run: |
-          if [[ "${{ needs.lint-validate.result }}" != "success" ]] \
+          if [[ "${{ needs.gitleaks.result }}" != "success" ]] \
+             || [[ "${{ needs.lint-validate.result }}" != "success" ]] \
              || [[ "${{ needs.plan-platform.result }}" != "success" ]] \
              || [[ "${{ needs.plan-regional.result }}" != "success" ]]; then
             echo "::error::One or more upstream jobs failed."
             exit 1
           fi
-          echo "All plan jobs passed."
+          echo "All plan + secret-scan jobs passed."
