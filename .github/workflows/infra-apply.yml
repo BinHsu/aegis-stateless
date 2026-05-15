@@ -49,7 +49,7 @@ jobs:
     if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.8
           terraform_wrapper: false
@@ -87,7 +87,7 @@ jobs:
         region: ${{ fromJson(needs.setup.outputs.enabled_regions) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.8
           terraform_wrapper: false
