@@ -3,6 +3,10 @@ CLAUDE.md
 backlog.md
 _context/
 
+# Project-local toolchain — `make dev-setup` rehydrates ./bin/ from
+# scripts/install-tools.sh (pinned versions + SHA256). Never committed.
+/bin/
+
 # Go build artifacts
 *.exe
 *.dll
@@ -22,7 +26,11 @@ vendor/
 *.tfvars
 *.tfvars.json
 !example.tfvars
-.terraform.lock.hcl
+# Pattern X (multi-region topology as data): repo-root tfvars is the single
+# source of truth for var.regions; must be committed.
+!regions.auto.tfvars
+# .terraform.lock.hcl is intentionally NOT ignored — HashiCorp guidance is to
+# commit it per-env so provider versions are pinned + reproducible.
 crash.log
 crash.*.log
 
