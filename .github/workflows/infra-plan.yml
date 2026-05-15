@@ -187,7 +187,7 @@ jobs:
         with:
           path: plans/
       - name: post combined plan diff as PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: terraform-plan
           message: |
