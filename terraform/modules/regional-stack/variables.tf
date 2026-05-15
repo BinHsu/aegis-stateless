@@ -40,6 +40,16 @@ variable "repo_name" {
   type        = string
 }
 
+variable "ci_role_arn" {
+  description = "ARN of the aegis-stateless-ci IAM role (CI plan). Gets an EKS ClusterAdmin access entry so `terraform plan` from CI can read Helm/k8s state."
+  type        = string
+}
+
+variable "apply_role_arn" {
+  description = "ARN of the aegis-stateless-apply IAM role (CI apply). Gets an EKS ClusterAdmin access entry so `terraform apply` from CI can manage Helm/k8s resources."
+  type        = string
+}
+
 # ---- Grafana Cloud creds (sensitive) -------------------------------------
 variable "gc_api_token" {
   description = "Grafana Cloud API token (admin on the aegis stack). Embedded in a K8s Secret used by Alloy."

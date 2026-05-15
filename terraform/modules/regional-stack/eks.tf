@@ -37,9 +37,39 @@ module "eks" {
     }
   }
 
-  # Cluster-creator gets system:masters via the EKS API authenticator
-  # by default in this module — no aws-auth ConfigMap juggling.
+  # Cluster-creator (the IAM principal running `make` locally) gets
+  # cluster-admin via the EKS access-entry API — no aws-auth ConfigMap.
   enable_cluster_creator_admin_permissions = true
+
+  # The CI roles need cluster access too: `terraform plan`/`apply` for the
+  # regional env reads Helm release state (stored in K8s Secrets) and the
+  # kubernetes_* resources. Both roles get a ClusterAdmin access entry —
+  # the AWS-side trust scoping (ci = read-only AWS / any ref; apply =
+  # admin AWS / refs/heads/main only) is the real blast-radius boundary;
+  # a `terraform plan` run by the ci role is non-mutating regardless of
+  # its K8s rights. Least-privilege K8s RBAC for a terraform-with-Helm
+  # plan (Helm state lives in Secrets, which the EKS View policy cannot
+  # read) would be a bespoke role — deferred, see docs/tradeoffs.md.
+  access_entries = {
+    infra_ci = {
+      principal_arn = var.ci_role_arn
+      policy_associations = {
+        cluster_admin = {
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
+    infra_apply = {
+      principal_arn = var.apply_role_arn
+      policy_associations = {
+        cluster_admin = {
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
+  }
 
   tags = local.common_tags
 }
