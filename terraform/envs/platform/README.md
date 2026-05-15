@@ -57,6 +57,18 @@ gh secret set AWS_INFRA_CI_ROLE_ARN                -b "arn:aws:iam::<acct>:role/
 gh secret set AWS_INFRA_APPLY_ROLE_ARN             -b "arn:aws:iam::<acct>:role/aegis-stateless-apply" --repo BinHsu/aegis-stateless
 ```
 
+## CI bootstrap gate — `BOOTSTRAP_COMPLETE`
+
+`infra-plan.yml` / `infra-apply.yml` skip their plan/apply jobs until a repo **variable** (not secret) flags that the AWS foundation exists. This resolves the bootstrap-ordering gap: before `platform/` is applied, the IAM roles + GitHub OIDC provider don't exist, so OIDC role assumption can't succeed — skipping keeps the pipeline green instead of failing on an unavoidable gap.
+
+After the operator has run `make bootstrap` + `make platform` locally (so the roles + OIDC provider exist) and set all the secrets above:
+
+```bash
+gh variable set BOOTSTRAP_COMPLETE -b "true" --repo BinHsu/aegis-stateless
+```
+
+From then on, `infra-plan` plans and `infra-apply` applies on every push to `main`. Before it, only `gitleaks` + `fmt/validate/lint/sec` + k8s-manifest validation run (and pass) — the plan/apply jobs show as `skipped`.
+
 Per CLAUDE.md anonymization policy: real values NEVER appear in committed files — including this README's command examples (use the placeholder strings above).
 
 ## Drift detection

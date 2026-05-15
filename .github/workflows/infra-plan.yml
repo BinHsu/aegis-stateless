@@ -80,6 +80,12 @@ jobs:
     name: plan-platform
     runs-on: ubuntu-latest
     needs: [setup, lint-validate]
+    # Skips until the operator has run bootstrap + platform locally and
+    # set the BOOTSTRAP_COMPLETE repo variable. Before that the AWS IAM
+    # roles + GitHub OIDC provider don't exist, so OIDC role assumption
+    # can't succeed — skipping keeps the pipeline green instead of
+    # failing on an unavoidable bootstrap-ordering gap.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -126,7 +132,8 @@ jobs:
     name: "plan-regional (${{ matrix.region }})"
     runs-on: ubuntu-latest
     needs: [setup, lint-validate]
-    if: ${{ needs.setup.outputs.enabled_regions != '[]' }}
+    # See plan-platform — gated on the operator-set BOOTSTRAP_COMPLETE.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' && needs.setup.outputs.enabled_regions != '[]' }}
     strategy:
       fail-fast: false
       matrix:
@@ -184,7 +191,7 @@ jobs:
     name: comment-plan-diff
     runs-on: ubuntu-latest
     needs: [plan-platform, plan-regional]
-    if: ${{ github.event_name == 'pull_request' && always() }}
+    if: ${{ always() && github.event_name == 'pull_request' && vars.BOOTSTRAP_COMPLETE == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -226,11 +233,15 @@ jobs:
     steps:
       - name: verify all upstream jobs succeeded
         run: |
+          # gitleaks + lint-validate MUST succeed. plan jobs may be
+          # `skipped` pre-bootstrap (BOOTSTRAP_COMPLETE unset) — that is
+          # acceptable; only an actual `failure` fails the summary.
+          ok() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
           if [[ "${{ needs.gitleaks.result }}" != "success" ]] \
              || [[ "${{ needs.lint-validate.result }}" != "success" ]] \
-             || [[ "${{ needs.plan-platform.result }}" != "success" ]] \
-             || [[ "${{ needs.plan-regional.result }}" != "success" ]]; then
-            echo "::error::One or more upstream jobs failed."
+             || ! ok "${{ needs.plan-platform.result }}" \
+             || ! ok "${{ needs.plan-regional.result }}"; then
+            echo "::error::A required job failed."
             exit 1
           fi
-          echo "All plan + secret-scan jobs passed."
+          echo "Required jobs green (plan jobs skipped pre-bootstrap is OK)."

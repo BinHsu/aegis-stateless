@@ -42,6 +42,11 @@ jobs:
   apply-platform:
     name: apply-platform
     runs-on: ubuntu-latest
+    # Skips until the operator has run bootstrap + platform locally and
+    # set the BOOTSTRAP_COMPLETE repo variable (the IAM apply role +
+    # GitHub OIDC provider must exist first). Keeps the pipeline green
+    # through the bootstrap-ordering gap.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -74,7 +79,8 @@ jobs:
     name: "apply-regional (${{ matrix.region }})"
     runs-on: ubuntu-latest
     needs: [setup, apply-platform]
-    if: ${{ needs.setup.outputs.enabled_regions != '[]' }}
+    # See apply-platform — gated on the operator-set BOOTSTRAP_COMPLETE.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' && needs.setup.outputs.enabled_regions != '[]' }}
     strategy:
       fail-fast: false       # one region's failure doesn't abort others
       matrix:
