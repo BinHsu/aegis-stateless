@@ -155,24 +155,24 @@ loki.process "add_labels" {
 
   stage.json {
     expressions = {
-      level    = "level"
-      msg      = "msg"
-      trace_id = "trace_id"
-      span_id  = "span_id"
+      level    = "level",
+      msg      = "msg",
+      trace_id = "trace_id",
+      span_id  = "span_id",
     }
   }
 
   stage.labels {
     values = {
-      level    = "level"
-      trace_id = "trace_id"
+      level    = "level",
+      trace_id = "trace_id",
     }
   }
 
   stage.static_labels {
     values = {
-      cluster = "${cluster_name}"
-      region  = "${region}"
+      cluster = "${cluster_name}",
+      region  = "${region}",
     }
   }
 }
@@ -207,8 +207,8 @@ pyroscope.write "default" {
     }
   }
   external_labels = {
-    cluster = "${cluster_name}"
-    region  = "${region}"
+    cluster = "${cluster_name}",
+    region  = "${region}",
   }
 }
 
