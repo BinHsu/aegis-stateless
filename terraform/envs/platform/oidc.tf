@@ -28,36 +28,37 @@ data "aws_iam_policy_document" "greeter_ci_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Scoped to ANY ref/branch on the greeter repo. Tighter scoping (e.g.
-    # `repo:BinHsu/aegis-greeter:ref:refs/heads/main`) is production hardening.
+    # Pinned to the main ref — aegis-greeter's publish.yml only runs on
+    # push to main, so the OIDC subject can be the exact ref (no branch
+    # wildcard). Tightest blast radius: a PR branch / fork branch on the
+    # greeter repo cannot assume this role.
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_owner}/aegis-greeter:*"]
+      values   = ["repo:${var.github_owner}/aegis-greeter:ref:refs/heads/main"]
     }
   }
 }
 
 data "aws_iam_policy_document" "greeter_ci_permissions" {
-  # ECR auth — read-only on the registry.
+  # ECR auth token — account-level, cannot be resource-scoped.
   statement {
     effect    = "Allow"
     actions   = ["ecr:GetAuthorizationToken"]
     resources = ["*"]
   }
 
-  # ECR push/pull — scoped to the aegis-greeter repo only.
+  # ECR push (+ the layer reads docker push performs) — scoped to the
+  # single aegis-greeter repo ARN. Exactly the set cross-repo issue #9
+  # enumerates; no broader Describe*/List* (those aren't needed to push).
   statement {
     effect = "Allow"
     actions = [
       "ecr:BatchCheckLayerAvailability",
       "ecr:BatchGetImage",
       "ecr:CompleteLayerUpload",
-      "ecr:DescribeImages",
-      "ecr:DescribeRepositories",
       "ecr:GetDownloadUrlForLayer",
       "ecr:InitiateLayerUpload",
-      "ecr:ListImages",
       "ecr:PutImage",
       "ecr:UploadLayerPart",
     ]

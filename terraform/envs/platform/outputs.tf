@@ -14,13 +14,23 @@ output "zone_name_servers" {
 }
 
 output "ecr_repository_url" {
-  description = "ECR repo URL where aegis-greeter pushes images."
+  description = "Full ECR repo URL — set as aegis-greeter repo variable ECR_REPO_URL. Form: <account>.dkr.ecr.<region>.amazonaws.com/aegis-greeter."
   value       = aws_ecr_repository.greeter.repository_url
+}
+
+output "ecr_registry" {
+  description = "ECR registry host (URL minus the /<repo> path) — set as aegis-greeter repo variable ECR_REGISTRY. Form: <account>.dkr.ecr.<region>.amazonaws.com."
+  value       = split("/", aws_ecr_repository.greeter.repository_url)[0]
 }
 
 output "ecr_repository_arn" {
   description = "ECR repo ARN (referenced by aegis-greeter CI IAM role)."
   value       = aws_ecr_repository.greeter.arn
+}
+
+output "aws_region" {
+  description = "Platform region — set as aegis-greeter repo variable AWS_REGION (publish.yml configure-aws-credentials region)."
+  value       = var.platform_region
 }
 
 output "greeter_ci_role_arn" {
