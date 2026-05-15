@@ -36,7 +36,13 @@ variable "grafana_cloud_url" {
 }
 
 variable "grafana_cloud_api_token" {
-  description = "Grafana Cloud API token with admin scope on the aegis stack. Supply via gitignored secrets.auto.tfvars or -var. NEVER commit a value."
+  description = "Grafana Cloud Access Policy token (glc_…) — used as the Alloy remote_write password for Mimir/Loki/Tempo/Pyroscope. NOT the grafana-provider auth (see grafana_auth_token). Supply via gitignored secrets.auto.tfvars. NEVER commit a value."
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_auth_token" {
+  description = "Grafana instance service-account token (glsa_…) — auth for the `grafana` TF provider managing dashboards/folders/alert-rules on aegis.grafana.net. Distinct from grafana_cloud_api_token. Create via the instance: Administration → Users and access → Service accounts → Admin role → add token. NEVER commit a value."
   type        = string
   sensitive   = true
 }

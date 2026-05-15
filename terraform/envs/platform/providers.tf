@@ -13,8 +13,13 @@ provider "aws" {
 }
 
 provider "grafana" {
+  # `auth` is a Grafana *instance* service-account token (glsa_…), NOT the
+  # glc_ Cloud Access Policy token. The provider manages dashboards /
+  # folders / alert rules / data-source lookups via the Grafana instance
+  # API (aegis.grafana.net/api/…); the glc_ token authenticates only to
+  # the data backends + grafana.com, and returns 401 here.
   url  = var.grafana_cloud_url
-  auth = var.grafana_cloud_api_token
+  auth = var.grafana_auth_token
 }
 
 provider "github" {
