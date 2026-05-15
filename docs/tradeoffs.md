@@ -1,0 +1,168 @@
+# Trade-offs and deferred work
+
+What this project deliberately did *not* build, why, and what production-grade
+would look like. Each item names the **trigger** that would justify doing it and
+a rough **effort** estimate — the point is to show the work was planned, not
+overlooked.
+
+This is the honest counterpart to the README: the system is right-sized for a
+cost-bounded take-home, not pretended to be production-complete.
+
+---
+
+## Resilience
+
+### Single region deployed
+
+`regions.auto.tfvars.json` enables one region (`eu-central-1`). The architecture
+is multi-region-*ready* — Pattern X (ADR `AS-0020`) makes adding a region a
+one-line data change — but only one is applied.
+
+- **Honest failure mode**: a region-wide outage is a service outage. There is no
+  cross-region failover.
+- **Production**: enable a second region (`enabled: true`), and add Route 53
+  latency records + health checks. Failover then = Route 53 TTL + health-check
+  interval (~30 s) + downstream DNS cache.
+- **Trigger**: a real availability SLA, or traffic from more than one continent.
+- **Effort**: ~0.5 day (the second region is already a data template).
+
+### Single NAT gateway
+
+`modules/regional-stack` provisions one NAT gateway per VPC, shared across AZs.
+A NAT-AZ failure takes out egress for private subnets in the other AZs.
+
+- **Production**: one NAT gateway per AZ (`single_nat_gateway = false`).
+- **Trigger**: an availability SLA that counts AZ-level egress failures.
+- **Effort**: one variable flip; ~3× NAT cost.
+
+### ArgoCD single replica
+
+ArgoCD runs one replica per cluster. A controller restart pauses reconciliation
+(it does not affect running workloads).
+
+- **Production**: ArgoCD HA mode (Redis HA + multiple controller/repo-server
+  replicas).
+- **Trigger**: reconciliation latency becomes operationally visible.
+- **Effort**: ~0.5 day (chart values).
+
+---
+
+## Security
+
+### EKS public API endpoint
+
+The EKS API server is reachable from the internet (`0.0.0.0/0`) so the operator
+and CI can run `terraform`/`kubectl` without a bastion. tfsec flags this; it is a
+deliberate, documented choice for the take-home.
+
+- **Production**: private endpoint + a bastion / VPN / AWS SSM Session Manager,
+  or `cluster_endpoint_public_access_cidrs` restricted to known office/CI ranges.
+- **Trigger**: any production posture.
+- **Effort**: ~0.5 day (plus the bastion/VPN it implies).
+
+### IAM apply role is `AdministratorAccess`
+
+`aegis-stateless-apply` (the CI apply role) carries `AdministratorAccess`. Its
+*trust* is tight — only `repo:BinHsu/aegis-stateless:ref:refs/heads/main` — but
+its *permissions* are broad.
+
+- **Production**: a bespoke least-privilege policy enumerating exactly the
+  create/update/delete actions the Terraform plan needs.
+- **Trigger**: production, or a shared AWS account.
+- **Effort**: ~1 day (derive the action set from a plan, iterate).
+
+### AWS-managed KMS keys
+
+S3 state, the ALB-logs bucket, ECR, and the SNS topic use AWS-managed keys
+(`aws/s3`, `AES256`, `aws/sns`), not customer-managed CMKs.
+
+- **Production**: customer-managed KMS keys with explicit key policies — granular
+  access control, cross-account grants, independent rotation.
+- **Trigger**: compliance requirements, or cross-account access.
+- **Effort**: ~0.5 day.
+- **Note**: ALB access-log delivery only supports SSE-S3 — that bucket cannot use
+  a CMK regardless. Not a choice, an AWS constraint.
+
+### Signed commits not enforced
+
+`main` branch protection requires status checks + linear history but not signed
+commits.
+
+- **Production**: `require_signed_commits = true`, once every contributor has
+  GPG/SSH signing configured.
+- **Trigger**: a team with commit-signing set up.
+- **Effort**: minutes (one flag) — gated only on contributor onboarding.
+
+### VPC Flow Logs
+
+Not enabled. tfsec flags it.
+
+- **Production**: flow logs → S3 → Athena for network forensics.
+- **Trigger**: a network-forensics or compliance requirement.
+- **Effort**: ~0.5 day; cost keeps it off-by-default.
+
+### Account-level defenses
+
+GuardDuty, Security Hub, AWS Config are not enabled.
+
+- **Production**: typically enabled org-wide in the management account, not
+  per-workload.
+- **Trigger**: a compliance audit.
+- **Effort**: ~1 day to enable + tune.
+
+---
+
+## DNS
+
+The Route 53 hosted zone (`aegis-stateless.example.com`) is a placeholder — no
+real domain is registered. The latency-routing structure is demonstrable via
+`dig @<assigned-nameserver>` without paying for a domain.
+
+Route 53 **records** pointing at each ALB are not yet created: the ALB DNS name
+is only known after the ALB controller provisions it from the Ingress, which
+happens after the Terraform apply.
+
+- **Production**: install `external-dns` in `regional-stack` with an IRSA role
+  scoped to Route 53 write. It watches Ingresses and reconciles records
+  (`hostname` + `aws-routing-policy: latency` + `set-identifier: <region>`
+  annotations) — no Terraform involvement, no chicken-and-egg.
+- **Trigger**: a real domain + production traffic.
+- **Effort**: ~0.5 day.
+
+---
+
+## Observability upgrade aspirations
+
+v1 ships the open-observability stack: OpenTelemetry + Grafana Alloy → Grafana
+Cloud (Mimir / Loki / Tempo / Pyroscope). Metrics, traces, logs, and continuous
+profiling are all live. What remains:
+
+| # | Add | Trigger | Effort |
+|---|---|---|---|
+| 1 | **SLO + error budget** (Pyrra / Sloth / OpenSLO) — burn-rate alerts replace static thresholds | Real user traffic + an SLA commitment | ~1 day |
+| 2 | **AWS WAF** on the ALB + managed rule groups | Public exposure that attracts attack volume | ~0.5 day |
+| 3 | **k6 synthetic blackbox** probing of the ALB endpoint | SLO-driven external detection | ~0.5 day |
+| 4 | **`cloudwatch_exporter`** Deployment for ALB-side metrics (`HealthyHostCount` flap, target-group churn) | A need for LB-side signals the app's OTel can't see | ~0.5 day |
+| 5 | **AMP + AMG** (managed Prometheus + Grafana on AWS) | Grafana Cloud free-tier limits breached, or org policy forbids external SaaS for telemetry — migration keeps Alloy + the OTel SDK unchanged, only `remote_write` URLs flip | ~0.5 day |
+| 6 | **Cross-region metric/log aggregation** | ≥ 2 regions deployed | ~0.5 day per pair |
+
+The choice not to add distributed tracing depth beyond what `otelhttp` emits is
+deliberate: a single-service greeter produces degenerate single-span traces.
+Tracing earns its keep once the app gains downstream dependencies.
+
+---
+
+## Delivery pipeline
+
+CI-driven apply is already in place (ADR `AS-0019`): `infra-apply` runs
+`terraform apply` on push to `main`, gated by PR + branch protection. What a
+larger setup would add:
+
+- **Plan/apply approval environments** — a GitHub Environment with required
+  reviewers in front of `infra-apply`, so apply needs an explicit human gate
+  beyond PR review. Deliberately omitted: PR review of the plan diff *is* the
+  gate, and a second button is Atlantis-era ceremony.
+- **Drift detection** — a scheduled `terraform plan` that alerts on out-of-band
+  changes. Effort: ~0.5 day.
+- **Policy-as-code** — OPA / Conftest gating the plan output against
+  organisational policy. Effort: ~1 day.
