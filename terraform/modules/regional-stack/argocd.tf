@@ -91,29 +91,33 @@ resource "helm_release" "argocd_application" {
   chart      = "argocd-apps"
   version    = "2.0.2" # pinned
 
+  # argocd-apps chart 2.x: `applications` is a MAP keyed by app name (1.x
+  # took a list). A list here makes the chart's range emit numeric keys →
+  # metadata.name becomes a number → "unmarshal number into string".
   values = [
     yamlencode({
-      applications = [{
-        name      = "aegis-greeter"
-        namespace = "argocd"
-        project   = "default"
-        source = {
-          repoURL        = var.repo_url_ssh
-          path           = "k8s/overlays/prod"
-          targetRevision = "HEAD"
-        }
-        destination = {
-          server    = "https://kubernetes.default.svc"
-          namespace = "greeter"
-        }
-        syncPolicy = {
-          automated = {
-            prune    = true
-            selfHeal = true
+      applications = {
+        aegis-greeter = {
+          namespace = "argocd"
+          project   = "default"
+          source = {
+            repoURL        = var.repo_url_ssh
+            path           = "k8s/overlays/prod"
+            targetRevision = "HEAD"
           }
-          syncOptions = ["CreateNamespace=true"]
+          destination = {
+            server    = "https://kubernetes.default.svc"
+            namespace = "greeter"
+          }
+          syncPolicy = {
+            automated = {
+              prune    = true
+              selfHeal = true
+            }
+            syncOptions = ["CreateNamespace=true"]
+          }
         }
-      }]
+      }
     })
   ]
 
