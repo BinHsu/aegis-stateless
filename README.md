@@ -194,11 +194,14 @@ sum by (pod) (count_over_time(
 | `infra-apply` | push to `main` | `terraform apply` per env (platform + regional matrix) |
 | `infra-ops` | `workflow_dispatch` | `bootstrap` / `destroy-region` / `destroy-platform` (the DR drill) |
 
-`main` is protected: required status checks + linear history + no force-push.
-Two OIDC roles split trust — a read-only role for PR plans, an apply role whose
-trust is pinned to `refs/heads/main`. Until the `BOOTSTRAP_COMPLETE` repo
-variable is set, the plan/apply jobs skip cleanly (the AWS foundation does not
-exist yet) and the pipeline stays green.
+`main` branch protection (required status checks + linear history + no
+force-push) is provisioned by `github_branch_protection`, gated on
+`var.enable_branch_protection` — GitHub requires Pro for branch protection on a
+private repo, so it is off by default until the repo is public or on Pro (see
+`docs/tradeoffs.md`). Two OIDC roles split trust — a read-only role for PR
+plans, an apply role whose trust is pinned to `refs/heads/main`. Until the
+`BOOTSTRAP_COMPLETE` repo variable is set, the plan/apply jobs skip cleanly (the
+AWS foundation does not exist yet) and the pipeline stays green.
 
 ## License
 

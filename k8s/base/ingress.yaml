@@ -22,11 +22,11 @@ metadata:
     # external-dns (deferred — see regional-stack module README): when
     # installed, this annotation drives a Route 53 A-alias record under
     # the platform-owned hosted zone.
-    external-dns.alpha.kubernetes.io/hostname: greeter.aegis-stateless.example.com
+    external-dns.alpha.kubernetes.io/hostname: greeter.aegis-stateless.test
 spec:
   ingressClassName: alb
   rules:
-    - host: greeter.aegis-stateless.example.com
+    - host: greeter.aegis-stateless.test
       http:
         paths:
           - path: /

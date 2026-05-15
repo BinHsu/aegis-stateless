@@ -13,6 +13,12 @@
 # has commit signing set up.
 #tfsec:ignore:github-branch_protections-require_signed_commits
 resource "github_branch_protection" "main" {
+  # GitHub gates branch protection on a private repo behind Pro. Default
+  # off (var.enable_branch_protection = false) so a free private repo
+  # applies; flip it true once the repo is public or the account is on
+  # Pro. See docs/tradeoffs.md.
+  count = var.enable_branch_protection ? 1 : 0
+
   repository_id = "aegis-stateless"
   pattern       = "main"
 

@@ -83,10 +83,26 @@ S3 state, the ALB-logs bucket, ECR, and the SNS topic use AWS-managed keys
 - **Note**: ALB access-log delivery only supports SSE-S3 — that bucket cannot use
   a CMK regardless. Not a choice, an AWS constraint.
 
+### Branch protection off by default
+
+`github_branch_protection` is gated on `var.enable_branch_protection`, default
+`false`. GitHub requires a Pro plan for branch protection on a *private* repo;
+a free private repo cannot apply the resource. The CI workflows still run
+(`infra-plan` on PR, `infra-apply` on merge) — without the resource, the
+"required status checks + linear history" merge gate is convention, not
+enforcement.
+
+- **Production**: make the repo public (branch protection is then free, and
+  aligns with this repo's portfolio intent — the anonymization policy already
+  treats every committed file as public), or move to GitHub Pro; then set
+  `enable_branch_protection = true`.
+- **Trigger**: any setting where merges to `main` must be machine-enforced.
+- **Effort**: one variable flip (plus the public/Pro decision).
+
 ### Signed commits not enforced
 
-`main` branch protection requires status checks + linear history but not signed
-commits.
+When branch protection *is* enabled, it requires status checks + linear history
+but not signed commits.
 
 - **Production**: `require_signed_commits = true`, once every contributor has
   GPG/SSH signing configured.
@@ -114,9 +130,13 @@ GuardDuty, Security Hub, AWS Config are not enabled.
 
 ## DNS
 
-The Route 53 hosted zone (`aegis-stateless.example.com`) is a placeholder — no
-real domain is registered. The latency-routing structure is demonstrable via
-`dig @<assigned-nameserver>` without paying for a domain.
+The Route 53 hosted zone (`aegis-stateless.test`) is a placeholder — no real
+domain is registered. `.test` is an RFC 6761 special-use TLD: reserved for
+testing and guaranteed never to be delegated on the public internet, so the
+zone cannot collide with a real domain. (`example.com` would seem the obvious
+placeholder but AWS Route 53 explicitly rejects it as reserved.) The
+latency-routing structure is demonstrable via `dig @<assigned-nameserver>`
+without registering a domain.
 
 Route 53 **records** pointing at each ALB are not yet created: the ALB DNS name
 is only known after the ALB controller provisions it from the Ingress, which

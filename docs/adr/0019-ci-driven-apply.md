@@ -24,6 +24,12 @@ check + linear history before merge. No post-merge approval button — the PR
 review of the plan diff is the human gate, symmetric with how ArgoCD already
 auto-applies Kubernetes changes.
 
+(Branch protection on a *private* repo requires GitHub Pro. The
+`github_branch_protection` resource is therefore gated on
+`var.enable_branch_protection`, off by default — see `docs/tradeoffs.md`. The
+design intent stands; on a free private repo the gate is convention until the
+repo is public or on Pro.)
+
 Trust is split across two OIDC roles: a read-only role for PR plans (any ref),
 and an apply role whose trust is pinned to `refs/heads/main` — a PR branch
 cannot assume it.

@@ -17,9 +17,9 @@ variable "platform_region" {
 }
 
 variable "dns_zone_name" {
-  description = "DNS zone name for the Route 53 hosted zone. Placeholder domain — no real domain is registered for the take-home; DNS is demonstrated via 'dig @<our-ns>'."
+  description = "DNS zone name for the Route 53 hosted zone. Placeholder under the .test TLD (RFC 6761 — reserved for testing, never delegated on the public internet, so it cannot collide with a real domain). AWS Route 53 rejects 'example.com' (RFC 2606, AWS-reserved); .test is accepted. DNS is demonstrated via 'dig @<assigned-ns>'."
   type        = string
-  default     = "aegis-stateless.example.com"
+  default     = "aegis-stateless.test"
 }
 
 variable "ecr_repository_name" {
@@ -121,6 +121,12 @@ variable "github_owner" {
   description = "GitHub org/user that owns the aegis-greeter + aegis-stateless repos. Used for the github TF provider + OIDC trust policies."
   type        = string
   default     = "BinHsu"
+}
+
+variable "enable_branch_protection" {
+  description = "Whether to create the github_branch_protection resource. GitHub requires Pro (or a public repo) for branch protection on a private repo — default false so a free private repo applies cleanly. Flip true once the repo is public or on Pro."
+  type        = bool
+  default     = false
 }
 
 variable "github_token" {
