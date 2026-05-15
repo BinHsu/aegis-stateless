@@ -50,22 +50,9 @@ resource "aws_s3_bucket_public_access_block" "tfstate" {
   restrict_public_buckets = true
 }
 
-# ---- state lock table -----------------------------------------------------
-resource "aws_dynamodb_table" "tfstate_lock" {
-  name         = var.dynamodb_table_name
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  point_in_time_recovery {
-    enabled = true
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
+# State locking: TF ≥ 1.11 supports native S3 conditional-write locking via
+# `use_lockfile = true` in the downstream backend blocks. DynamoDB-based
+# locking is deprecated upstream and will be removed in a future minor
+# version, so we skip it entirely. The lock file lives at
+# `<state_key>.tflock` in the same bucket; PutObject IfNoneMatch provides
+# the atomic "create-if-absent" primitive that backs the lock.

@@ -67,7 +67,6 @@ jobs:
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}" \
             -backend-config="region=${{ secrets.TFSTATE_REGION }}" \
-            -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
             -backend-config="encrypt=true"
           terraform apply -auto-approve -var-file="$GITHUB_WORKSPACE/regions.auto.tfvars.json"
 
@@ -117,6 +116,5 @@ jobs:
             -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}" \
             -backend-config="region=${{ secrets.TFSTATE_REGION }}" \
             -backend-config="key=regional/${{ matrix.region }}/terraform.tfstate" \
-            -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
             -backend-config="encrypt=true"
           terraform apply -auto-approve

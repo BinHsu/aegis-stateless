@@ -123,7 +123,6 @@ regional-one: $(BACKEND_HCL)
 	    -backend-config="bucket=$$bucket" \
 	    -backend-config="region=$$tfstate_region" \
 	    -backend-config="key=regional/$(REGION)/terraform.tfstate" \
-	    -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
 	    -backend-config="encrypt=true" && \
 	  TF_VAR_tfstate_bucket=$$bucket \
 	  TF_VAR_tfstate_region=$$tfstate_region \
@@ -153,7 +152,6 @@ destroy-region: $(BACKEND_HCL)
 	    -backend-config="bucket=$$bucket" \
 	    -backend-config="region=$$tfstate_region" \
 	    -backend-config="key=regional/$(REGION)/terraform.tfstate" \
-	    -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
 	    -backend-config="encrypt=true" && \
 	  TF_VAR_tfstate_bucket=$$bucket \
 	  TF_VAR_tfstate_region=$$tfstate_region \

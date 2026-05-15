@@ -34,11 +34,23 @@ CI (canonical): `infra-apply.yml` workflow, push to `main`, GH Actions matrix ov
 
 `regional/<region>/terraform.tfstate` in the bootstrap-provisioned bucket. Passed via `-backend-config="key=regional/$REGION/terraform.tfstate"` in `terraform init`.
 
-## Sensitive vars
+## Local setup — sensitive vars (NEVER committed)
+
+A blank template ships at `secrets.auto.tfvars.example`. **Copy it once** and fill:
+
+```bash
+cp terraform/envs/regional/secrets.auto.tfvars.example \
+   terraform/envs/regional/secrets.auto.tfvars
+# edit and put the same github_token used by platform/
+```
+
+`secrets.auto.tfvars` is gitignored by the `*.tfvars` rule.
 
 | Var | Local | CI |
 |---|---|---|
 | `github_token` | gitignored `secrets.auto.tfvars` in this dir | GH Actions secret `GH_DEPLOY_KEY_PAT`, injected as `TF_VAR_github_token` |
+
+Other inputs (`region` / `vpc_cidr` / `node_*` / `platform_region` / `tfstate_bucket` / `tfstate_region`) are injected by the Makefile or GH Actions workflow at apply time — no need to set them in `secrets.auto.tfvars`.
 
 ## Provider config note
 

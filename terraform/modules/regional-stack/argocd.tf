@@ -21,7 +21,7 @@ resource "tls_private_key" "argocd_repo" {
 }
 
 resource "github_repository_deploy_key" "argocd" {
-  title      = "argocd-${var.region}"
+  title      = "aegis-stateless-argocd-${var.region}"
   repository = var.repo_name
   key        = tls_private_key.argocd_repo.public_key_openssh
   read_only  = true

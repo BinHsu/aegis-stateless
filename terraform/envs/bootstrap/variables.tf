@@ -9,12 +9,6 @@ variable "bucket_prefix" {
   default     = "aegis-stateless-tfstate"
 }
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table used for state locking."
-  type        = string
-  default     = "aegis-stateless-tfstate-lock"
-}
-
 variable "project_tag" {
   description = "Value of the Project tag applied to all resources."
   type        = string

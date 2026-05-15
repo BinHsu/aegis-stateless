@@ -77,13 +77,13 @@ jobs:
       - name: derive backend config
         run: |
           # Bootstrap state is operator-applied once and lives on local disk;
-          # CI reads bucket/region/table from the GH Actions secret set after
-          # bootstrap. This avoids running bootstrap from CI.
+          # CI reads bucket/region from GH Actions secrets set after bootstrap.
+          # No dynamodb_table — TF ≥ 1.11 native S3 locking via use_lockfile
+          # (declared in platform/backend.tf).
           cat <<EOF > backend.hcl
-          bucket         = "${{ secrets.TFSTATE_BUCKET }}"
-          dynamodb_table = "aegis-stateless-tfstate-lock"
-          region         = "${{ secrets.TFSTATE_REGION }}"
-          encrypt        = true
+          bucket  = "${{ secrets.TFSTATE_BUCKET }}"
+          region  = "${{ secrets.TFSTATE_REGION }}"
+          encrypt = true
           EOF
       - name: plan
         env:
@@ -98,7 +98,8 @@ jobs:
         run: |
           cd terraform/envs/platform
           terraform init -reconfigure -backend-config="$GITHUB_WORKSPACE/backend.hcl"
-          terraform plan -var-file="$GITHUB_WORKSPACE/regions.auto.tfvars.json" -out=plan.bin
+          # -lock=false on plan: ReadOnly IAM role can't write .tflock.
+          terraform plan -lock=false -var-file="$GITHUB_WORKSPACE/regions.auto.tfvars.json" -out=plan.bin
           terraform show -no-color plan.bin > plan.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -151,9 +152,12 @@ jobs:
             -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}" \
             -backend-config="region=${{ secrets.TFSTATE_REGION }}" \
             -backend-config="key=regional/${{ matrix.region }}/terraform.tfstate" \
-            -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
             -backend-config="encrypt=true"
-          terraform plan -out=plan.bin
+          # -lock=false on plan: ReadOnly IAM role (infra_ci) can't write
+          # the .tflock file. Plan is read-only against state so lock skip
+          # is safe; apply (separate job, infra_apply role with S3 write)
+          # acquires the lock normally.
+          terraform plan -lock=false -out=plan.bin
           terraform show -no-color plan.bin > plan-${{ matrix.region }}.txt
       - uses: actions/upload-artifact@v4
         with:

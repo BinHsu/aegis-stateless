@@ -3,7 +3,7 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  cluster_name = "aegis-${var.region}"
+  cluster_name = "aegis-stateless-${var.region}"
 
   azs = slice(data.aws_availability_zones.available.names, 0, 3)
 
