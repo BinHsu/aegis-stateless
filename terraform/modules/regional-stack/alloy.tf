@@ -90,6 +90,11 @@ resource "helm_release" "alloy" {
         type = "daemonset"
       }
       alloy = {
+        # `pyroscope.receive_http` is a public-preview component; Alloy
+        # refuses anything below GA by default. Lower the minimum so the
+        # Pyroscope receive/write path loads. (--stability.level allows
+        # the named level and above.)
+        stabilityLevel = "public-preview"
         # Mount the GC credentials secret as env vars.
         envFrom = [{
           secretRef = {
