@@ -133,6 +133,22 @@ GuardDuty, Security Hub, AWS Config are not enabled.
 
 ---
 
+## ALB access logs
+
+The S3 bucket for ALB access logs is provisioned in `platform/` (Block Public
+Access, 7-day lifecycle), but the greeter Ingress does not enable access logs.
+The ALB controller requires `access_logs.s3.bucket=<name>` alongside
+`access_logs.s3.enabled=true`, and that bucket name embeds the AWS account ID —
+which the anonymization policy forbids in a committed manifest.
+
+- **Production**: inject the bucket name at deploy time — an operator-local
+  kustomize overlay patch, or a controller that templates the annotation. Then
+  ALB access logs land in the (already-provisioned) S3 bucket.
+- **Trigger**: a need for per-request ALB access logs (forensics, the request
+  URL / client IP / latency that app-level OTel does not capture).
+- **Effort**: ~0.5 day (the bucket already exists; only the annotation wiring
+  is missing).
+
 ## DNS
 
 The Route 53 hosted zone (`aegis-stateless.test`) is a placeholder — no real

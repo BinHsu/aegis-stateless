@@ -14,11 +14,12 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-    # ALB access logs → S3 bucket provisioned in the platform/ TF env.
-    # The actual bucket name is environment-specific; the overlay or a
-    # regional-stack-injected ConfigMap supplies it. Placeholder here.
-    alb.ingress.kubernetes.io/load-balancer-attributes: >-
-      access_logs.s3.enabled=true
+    # ALB access logs: deferred. The S3 bucket is provisioned in the
+    # platform/ env, but enabling `access_logs.s3.enabled` requires
+    # `access_logs.s3.bucket=<name>` too — and that name embeds the AWS
+    # account ID, which cannot be committed (anonymization policy). Wire
+    # it via an operator-local overlay patch with the real bucket name.
+    # See docs/tradeoffs.md.
     # external-dns (deferred — see regional-stack module README): when
     # installed, this annotation drives a Route 53 A-alias record under
     # the platform-owned hosted zone.
