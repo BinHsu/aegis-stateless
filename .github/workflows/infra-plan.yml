@@ -113,7 +113,7 @@ jobs:
           # -lock=false on plan: ReadOnly IAM role can't write .tflock.
           terraform plan -lock=false -var-file="$GITHUB_WORKSPACE/regions.auto.tfvars.json" -out=plan.bin
           terraform show -no-color plan.bin > plan.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: plan-platform
           path: terraform/envs/platform/plan.txt
@@ -171,7 +171,7 @@ jobs:
           # acquires the lock normally.
           terraform plan -lock=false -out=plan.bin
           terraform show -no-color plan.bin > plan-${{ matrix.region }}.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: plan-regional-${{ matrix.region }}
           path: terraform/envs/regional/plan-${{ matrix.region }}.txt
