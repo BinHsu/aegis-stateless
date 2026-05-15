@@ -41,8 +41,28 @@ variable "grafana_cloud_api_token" {
   sensitive   = true
 }
 
-variable "grafana_cloud_remote_write_username" {
-  description = "Mimir/Loki/Tempo/Pyroscope remote_write user IDs (single string if all four share the same — usually GC stack ID)."
+# Grafana Cloud uses a distinct instance-ID username per backend (Mimir,
+# Loki, Tempo, Pyroscope each differ); only the API token is shared.
+variable "grafana_cloud_mimir_username" {
+  description = "Mimir remote_write username (GC Prometheus instance ID)."
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_cloud_loki_username" {
+  description = "Loki push username (GC Loki instance ID)."
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_cloud_tempo_username" {
+  description = "Tempo OTLP username (GC Tempo instance ID)."
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_cloud_pyroscope_username" {
+  description = "Pyroscope username (GC Pyroscope instance ID)."
   type        = string
   sensitive   = true
 }

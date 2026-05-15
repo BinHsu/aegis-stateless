@@ -21,12 +21,15 @@ module "stack" {
   repo_url_ssh = var.repo_url_ssh
   repo_name    = var.repo_name
 
-  gc_api_token             = data.aws_ssm_parameter.gc_api_token.value
-  gc_remote_write_username = data.aws_ssm_parameter.gc_remote_write_username.value
-  gc_mimir_url             = data.aws_ssm_parameter.gc_mimir_url.value
-  gc_loki_url              = data.aws_ssm_parameter.gc_loki_url.value
-  gc_tempo_url             = data.aws_ssm_parameter.gc_tempo_url.value
-  gc_pyroscope_url         = data.aws_ssm_parameter.gc_pyroscope_url.value
+  gc_api_token          = data.aws_ssm_parameter.gc_api_token.value
+  gc_mimir_url          = data.aws_ssm_parameter.gc_mimir_url.value
+  gc_mimir_username     = data.aws_ssm_parameter.gc_mimir_username.value
+  gc_loki_url           = data.aws_ssm_parameter.gc_loki_url.value
+  gc_loki_username      = data.aws_ssm_parameter.gc_loki_username.value
+  gc_tempo_url          = data.aws_ssm_parameter.gc_tempo_url.value
+  gc_tempo_username     = data.aws_ssm_parameter.gc_tempo_username.value
+  gc_pyroscope_url      = data.aws_ssm_parameter.gc_pyroscope_url.value
+  gc_pyroscope_username = data.aws_ssm_parameter.gc_pyroscope_username.value
 
   project_tag     = var.project_tag
   cost_center_tag = var.cost_center_tag

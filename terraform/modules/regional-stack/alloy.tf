@@ -31,13 +31,19 @@ resource "kubernetes_secret" "grafana_cloud" {
     namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
 
+  # Keys are UPPERCASE — `envFrom.secretRef` maps each key verbatim to an
+  # env var, and the Alloy River config reads them as sys.env("API_TOKEN")
+  # etc. Lowercase keys here would silently not match.
   data = {
-    api_token             = var.gc_api_token
-    remote_write_username = var.gc_remote_write_username
-    mimir_url             = var.gc_mimir_url
-    loki_url              = var.gc_loki_url
-    tempo_url             = var.gc_tempo_url
-    pyroscope_url         = var.gc_pyroscope_url
+    API_TOKEN          = var.gc_api_token
+    MIMIR_URL          = var.gc_mimir_url
+    MIMIR_USERNAME     = var.gc_mimir_username
+    LOKI_URL           = var.gc_loki_url
+    LOKI_USERNAME      = var.gc_loki_username
+    TEMPO_URL          = var.gc_tempo_url
+    TEMPO_USERNAME     = var.gc_tempo_username
+    PYROSCOPE_URL      = var.gc_pyroscope_url
+    PYROSCOPE_USERNAME = var.gc_pyroscope_username
   }
 
   type = "Opaque"

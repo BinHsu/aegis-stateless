@@ -24,14 +24,14 @@ data "aws_ssm_parameter" "gc_api_token" {
   name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.api_token
 }
 
-data "aws_ssm_parameter" "gc_remote_write_username" {
-  provider = aws.platform
-  name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.remote_write_username
-}
-
 data "aws_ssm_parameter" "gc_mimir_url" {
   provider = aws.platform
   name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.mimir_url
+}
+
+data "aws_ssm_parameter" "gc_mimir_username" {
+  provider = aws.platform
+  name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.mimir_username
 }
 
 data "aws_ssm_parameter" "gc_loki_url" {
@@ -39,12 +39,27 @@ data "aws_ssm_parameter" "gc_loki_url" {
   name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.loki_url
 }
 
+data "aws_ssm_parameter" "gc_loki_username" {
+  provider = aws.platform
+  name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.loki_username
+}
+
 data "aws_ssm_parameter" "gc_tempo_url" {
   provider = aws.platform
   name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.tempo_url
 }
 
+data "aws_ssm_parameter" "gc_tempo_username" {
+  provider = aws.platform
+  name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.tempo_username
+}
+
 data "aws_ssm_parameter" "gc_pyroscope_url" {
   provider = aws.platform
   name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.pyroscope_url
+}
+
+data "aws_ssm_parameter" "gc_pyroscope_username" {
+  provider = aws.platform
+  name     = data.terraform_remote_state.platform.outputs.grafana_cloud_ssm_paths.pyroscope_username
 }

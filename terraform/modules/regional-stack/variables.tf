@@ -47,14 +47,14 @@ variable "gc_api_token" {
   sensitive   = true
 }
 
-variable "gc_remote_write_username" {
-  description = "Grafana Cloud remote_write user ID (typically stack ID, shared across Mimir/Loki/Tempo/Pyroscope)."
+variable "gc_mimir_url" {
+  description = "Mimir remote_write endpoint."
   type        = string
   sensitive   = true
 }
 
-variable "gc_mimir_url" {
-  description = "Mimir remote_write endpoint."
+variable "gc_mimir_username" {
+  description = "Mimir remote_write username (GC Prometheus instance ID)."
   type        = string
   sensitive   = true
 }
@@ -65,14 +65,32 @@ variable "gc_loki_url" {
   sensitive   = true
 }
 
+variable "gc_loki_username" {
+  description = "Loki push username (GC Loki instance ID)."
+  type        = string
+  sensitive   = true
+}
+
 variable "gc_tempo_url" {
   description = "Tempo OTLP endpoint."
   type        = string
   sensitive   = true
 }
 
+variable "gc_tempo_username" {
+  description = "Tempo OTLP username (GC Tempo instance ID)."
+  type        = string
+  sensitive   = true
+}
+
 variable "gc_pyroscope_url" {
   description = "Pyroscope ingest endpoint."
+  type        = string
+  sensitive   = true
+}
+
+variable "gc_pyroscope_username" {
+  description = "Pyroscope username (GC Pyroscope instance ID)."
   type        = string
   sensitive   = true
 }

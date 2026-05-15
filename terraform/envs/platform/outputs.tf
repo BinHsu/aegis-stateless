@@ -51,12 +51,15 @@ output "infra_apply_role_arn" {
 output "grafana_cloud_ssm_paths" {
   description = "SSM Parameter Store paths holding Grafana Cloud creds. regional/ env reads these via data.aws_ssm_parameter."
   value = {
-    api_token             = aws_ssm_parameter.gc_api_token.name
-    remote_write_username = aws_ssm_parameter.gc_remote_write_username.name
-    mimir_url             = aws_ssm_parameter.gc_mimir_url.name
-    loki_url              = aws_ssm_parameter.gc_loki_url.name
-    tempo_url             = aws_ssm_parameter.gc_tempo_url.name
-    pyroscope_url         = aws_ssm_parameter.gc_pyroscope_url.name
+    api_token          = aws_ssm_parameter.gc_api_token.name
+    mimir_url          = aws_ssm_parameter.gc_mimir_url.name
+    mimir_username     = aws_ssm_parameter.gc_mimir_username.name
+    loki_url           = aws_ssm_parameter.gc_loki_url.name
+    loki_username      = aws_ssm_parameter.gc_loki_username.name
+    tempo_url          = aws_ssm_parameter.gc_tempo_url.name
+    tempo_username     = aws_ssm_parameter.gc_tempo_username.name
+    pyroscope_url      = aws_ssm_parameter.gc_pyroscope_url.name
+    pyroscope_username = aws_ssm_parameter.gc_pyroscope_username.name
   }
 }
 

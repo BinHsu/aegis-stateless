@@ -27,8 +27,8 @@ Where to get each value:
 | Var | Source |
 |---|---|
 | `grafana_cloud_api_token` | Grafana Cloud → Connections → Cloud Access Policies → create token with admin scope on the stack |
-| `grafana_cloud_remote_write_username` | Grafana Cloud → Connections → for each backend (Mimir/Loki/Tempo/Pyroscope) → user ID (typically same = stack ID) |
-| `grafana_cloud_mimir_url` / `_loki_url` / `_tempo_url` / `_pyroscope_url` | Same Connections pages — push/ingest URLs per backend |
+| `grafana_cloud_{mimir,loki,tempo,pyroscope}_url` | Grafana Cloud → Connections → each backend's "Send …" page — the push/ingest URL |
+| `grafana_cloud_{mimir,loki,tempo,pyroscope}_username` | Same pages — each backend has its own instance-ID username (they differ) |
 | `budget_alert_email` | Operator-controlled email address (AWS Budget + Grafana alert routing both use it) |
 | `github_token` | GitHub fine-grained PAT with `admin:public_key` on the aegis-stateless repo (regional-stack registers one deploy key per region via this) |
 
@@ -40,7 +40,10 @@ All marked `sensitive = true` in `variables.tf`; not echoed in `terraform plan` 
 
 ```bash
 gh secret set GRAFANA_CLOUD_API_TOKEN              -b "glc_..."            --repo BinHsu/aegis-stateless
-gh secret set GRAFANA_CLOUD_REMOTE_WRITE_USERNAME  -b "<stack-id>"         --repo BinHsu/aegis-stateless
+gh secret set GRAFANA_CLOUD_MIMIR_USERNAME     -b "<mimir-instance-id>"     --repo BinHsu/aegis-stateless
+gh secret set GRAFANA_CLOUD_LOKI_USERNAME      -b "<loki-instance-id>"      --repo BinHsu/aegis-stateless
+gh secret set GRAFANA_CLOUD_TEMPO_USERNAME     -b "<tempo-instance-id>"     --repo BinHsu/aegis-stateless
+gh secret set GRAFANA_CLOUD_PYROSCOPE_USERNAME -b "<pyroscope-instance-id>" --repo BinHsu/aegis-stateless
 gh secret set GRAFANA_CLOUD_MIMIR_URL              -b "https://prometheus-prod-XX-..."  --repo BinHsu/aegis-stateless
 gh secret set GRAFANA_CLOUD_LOKI_URL               -b "https://logs-prod-XXX-..."       --repo BinHsu/aegis-stateless
 gh secret set GRAFANA_CLOUD_TEMPO_URL              -b "https://tempo-prod-XX-..."       --repo BinHsu/aegis-stateless

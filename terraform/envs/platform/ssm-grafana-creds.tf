@@ -12,11 +12,32 @@ resource "aws_ssm_parameter" "gc_api_token" {
   value       = var.grafana_cloud_api_token
 }
 
-resource "aws_ssm_parameter" "gc_remote_write_username" {
-  name        = "/aegis-stateless/grafana-cloud/remote-write-username"
-  description = "Grafana Cloud remote_write user ID (typically GC stack ID, shared across Mimir/Loki/Tempo/Pyroscope)."
+resource "aws_ssm_parameter" "gc_mimir_username" {
+  name        = "/aegis-stateless/grafana-cloud/mimir-username"
+  description = "Mimir remote_write username (GC Prometheus instance ID)."
   type        = "SecureString"
-  value       = var.grafana_cloud_remote_write_username
+  value       = var.grafana_cloud_mimir_username
+}
+
+resource "aws_ssm_parameter" "gc_loki_username" {
+  name        = "/aegis-stateless/grafana-cloud/loki-username"
+  description = "Loki push username (GC Loki instance ID)."
+  type        = "SecureString"
+  value       = var.grafana_cloud_loki_username
+}
+
+resource "aws_ssm_parameter" "gc_tempo_username" {
+  name        = "/aegis-stateless/grafana-cloud/tempo-username"
+  description = "Tempo OTLP username (GC Tempo instance ID)."
+  type        = "SecureString"
+  value       = var.grafana_cloud_tempo_username
+}
+
+resource "aws_ssm_parameter" "gc_pyroscope_username" {
+  name        = "/aegis-stateless/grafana-cloud/pyroscope-username"
+  description = "Pyroscope username (GC Pyroscope instance ID)."
+  type        = "SecureString"
+  value       = var.grafana_cloud_pyroscope_username
 }
 
 resource "aws_ssm_parameter" "gc_mimir_url" {

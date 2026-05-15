@@ -1,8 +1,10 @@
 // Alloy River config — rendered into a ConfigMap by helm_release "alloy".
 // Templated values (substituted at TF apply time): ${cluster_name}, ${region}.
 // Secrets sourced from env vars (mounted from kubernetes_secret
-// "grafana-cloud-credentials"): API_TOKEN, REMOTE_WRITE_USERNAME, MIMIR_URL,
-// LOKI_URL, TEMPO_URL, PYROSCOPE_URL.
+// "grafana-cloud-credentials"): API_TOKEN; and per-backend URL + USERNAME
+// pairs — {MIMIR,LOKI,TEMPO,PYROSCOPE}_URL and {MIMIR,LOKI,TEMPO,
+// PYROSCOPE}_USERNAME (each Grafana Cloud backend has a distinct
+// instance-ID username; only the API token is shared).
 
 // ============================================================================
 // Discovery
@@ -136,7 +138,7 @@ otelcol.exporter.otlp "tempo" {
 }
 
 otelcol.auth.basic "tempo" {
-  username = sys.env("REMOTE_WRITE_USERNAME")
+  username = sys.env("TEMPO_USERNAME")
   password = sys.env("API_TOKEN")
 }
 
@@ -179,7 +181,7 @@ loki.write "default" {
   endpoint {
     url = sys.env("LOKI_URL")
     basic_auth {
-      username = sys.env("REMOTE_WRITE_USERNAME")
+      username = sys.env("LOKI_USERNAME")
       password = sys.env("API_TOKEN")
     }
   }
@@ -200,7 +202,7 @@ pyroscope.write "default" {
   endpoint {
     url = sys.env("PYROSCOPE_URL")
     basic_auth {
-      username = sys.env("REMOTE_WRITE_USERNAME")
+      username = sys.env("PYROSCOPE_USERNAME")
       password = sys.env("API_TOKEN")
     }
   }
@@ -217,7 +219,7 @@ prometheus.remote_write "mimir" {
   endpoint {
     url = sys.env("MIMIR_URL")
     basic_auth {
-      username = sys.env("REMOTE_WRITE_USERNAME")
+      username = sys.env("MIMIR_USERNAME")
       password = sys.env("API_TOKEN")
     }
   }
