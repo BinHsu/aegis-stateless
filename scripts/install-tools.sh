@@ -25,6 +25,7 @@ TFLINT_VERSION=v0.53.0
 TFSEC_VERSION=v1.28.11
 KUBECONFORM_VERSION=v0.6.7
 HADOLINT_VERSION=v2.12.0
+JQ_VERSION=1.7.1
 
 # ---- OS / arch detection ---------------------------------------------------
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')   # darwin | linux
@@ -124,6 +125,24 @@ else
   mv "$HADOLINT_BIN" "$BIN/hadolint"
   chmod +x "$BIN/hadolint"
 fi
+
+# ---- jq -------------------------------------------------------------------
+# Used by Makefile + GH Actions workflows to parse regions.auto.tfvars.json
+# (single source of truth for region topology). jq's release assets use a
+# different naming convention again: jq-macos-arm64 / jq-linux-amd64 etc.
+echo ">>> jq ${JQ_VERSION} (${OS}/${ARCH})"
+case "$OS" in
+  darwin) JQ_OS=macos ;;
+  linux)  JQ_OS=linux ;;
+esac
+JQ_BIN="jq-${JQ_OS}-${ARCH}"
+curl -fsSL -o "$JQ_BIN" \
+  "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/${JQ_BIN}"
+curl -fsSL -o sha256sum.txt \
+  "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/sha256sum.txt"
+verify_sha256 "$JQ_BIN" sha256sum.txt
+mv "$JQ_BIN" "$BIN/jq"
+chmod +x "$BIN/jq"
 
 # ---- done -----------------------------------------------------------------
 echo

@@ -1,15 +1,23 @@
 # aegis-stateless — Makefile
 #
-# Wraps terraform invocations with a project-local PATH (so tools resolve from
-# ./bin/, never the host's /usr/local) and a shared -var-file pointing at the
-# single source of truth for the multi-region topology (regions.auto.tfvars).
+# Local dev + CI-driven backbone. Canonical apply pipeline is GH Actions
+# (infra-plan.yml on PR + infra-apply.yml on push-to-main + infra-ops.yml
+# for one-shots). Makefile targets exist for:
+#   - local fmt/validate/lint/sec sanity before push
+#   - emergency / dev manual apply (operator override)
+#   - DR drill from the operator's machine (if CI is unavailable)
 #
-# Per "Host isolation discipline": every dev tool lives in ./bin/. Reviewer can
-# clone + `make dev-setup all` without conflicting with their toolchain.
+# Multi-region orchestration: this Makefile loops over enabled regions in
+# regions.auto.tfvars.json (jq filter) and invokes regional/ once per
+# region with per-region scalars. State key is `regional/<region>/`-
+# scoped → per-region blast-radius isolation.
+#
+# Per "Host isolation discipline": every dev tool lives in ./bin/.
 
-ROOT   := $(CURDIR)
-BIN    := $(ROOT)/bin
-TFVARS := $(ROOT)/regions.auto.tfvars
+ROOT        := $(CURDIR)
+BIN         := $(ROOT)/bin
+TFVARS_JSON := $(ROOT)/regions.auto.tfvars.json
+BACKEND_HCL := $(ROOT)/backend.hcl
 
 PATH := $(BIN):$(PATH)
 export PATH
@@ -23,25 +31,34 @@ TF_BOOTSTRAP := terraform/envs/bootstrap
 TF_PLATFORM  := terraform/envs/platform
 TF_REGIONAL  := terraform/envs/regional
 
+# Enabled region list (jq selects .value.enabled = true). Evaluated lazily
+# inside recipes — chicken-and-egg: file may not exist on a fresh clone
+# until regions.auto.tfvars.json is created.
+ACTIVE_REGIONS = $(shell jq -r '.regions | to_entries[] | select(.value.enabled) | .key' $(TFVARS_JSON) 2>/dev/null)
+
 .PHONY: help dev-setup fmt validate lint sec \
-        bootstrap platform regional all \
-        destroy-regional destroy-platform \
-        clean-bin
+        bootstrap regenerate-backend platform regional regional-one \
+        all destroy-region destroy-platform clean-bin clean-backend
 
 help:
 	@echo "Targets:"
-	@echo "  dev-setup        Install pinned tflint/tfsec/kubeconform/hadolint into ./bin/"
-	@echo "  fmt              terraform fmt -recursive terraform/"
-	@echo "  validate         terraform validate in each env (no backend init)"
-	@echo "  lint             tflint --recursive --chdir=terraform/"
-	@echo "  sec              tfsec terraform/"
-	@echo "  bootstrap        Apply terraform/envs/bootstrap (one-time; creates remote backend)"
-	@echo "  platform         Apply terraform/envs/platform (slow lifecycle; survives DR drill)"
-	@echo "  regional         Apply terraform/envs/regional (fast lifecycle; DR drill target)"
-	@echo "  all              bootstrap + platform + regional in order"
-	@echo "  destroy-regional DR drill — tear down workload; platform survives"
-	@echo "  destroy-platform Full teardown — Route 53 + ECR + budgets + Grafana resources"
-	@echo "  clean-bin        Remove ./bin/ (project-local tools)"
+	@echo "  dev-setup              Install pinned tflint/tfsec/kubeconform/hadolint/jq into ./bin/"
+	@echo "  fmt                    terraform fmt -recursive terraform/"
+	@echo "  validate               terraform validate in each env (no backend init)"
+	@echo "  lint                   tflint --recursive --chdir=terraform/"
+	@echo "  sec                    tfsec terraform/"
+	@echo "  bootstrap              Apply bootstrap (one-time; LOCAL state; creates remote backend)"
+	@echo "  regenerate-backend     Re-emit ./backend.hcl from bootstrap outputs (run after bootstrap)"
+	@echo "  platform               Apply platform env (slow lifecycle; survives DR drill)"
+	@echo "  regional               Apply regional env for ALL enabled regions (loops)"
+	@echo "  regional-one REGION=X  Apply regional env for ONE region X"
+	@echo "  all                    bootstrap → platform → regional (full from scratch)"
+	@echo "  destroy-region REGION=X  Destroy one region's regional stack (DR drill target)"
+	@echo "  destroy-platform       Destroy platform env (post-submission cleanup)"
+	@echo "  clean-bin              Remove ./bin/ (project-local tools)"
+	@echo "  clean-backend          Remove ./backend.hcl (regenerated from bootstrap)"
+	@echo ""
+	@echo "Active regions (enabled in regions.auto.tfvars.json): $(ACTIVE_REGIONS)"
 
 dev-setup:
 	./scripts/install-tools.sh $(BIN)
@@ -50,15 +67,10 @@ fmt:
 	terraform fmt -recursive terraform/
 
 validate:
-	@if [ -d $(TF_BOOTSTRAP) ]; then \
-	  cd $(TF_BOOTSTRAP) && terraform init -backend=false && terraform validate; \
-	fi
-	@if [ -d $(TF_PLATFORM)  ]; then \
-	  cd $(TF_PLATFORM)  && terraform init -backend=false && terraform validate; \
-	fi
-	@if [ -d $(TF_REGIONAL)  ]; then \
-	  cd $(TF_REGIONAL)  && terraform init -backend=false && terraform validate; \
-	fi
+	@for env in bootstrap platform regional; do \
+	  echo ">>> validate $$env"; \
+	  ( cd terraform/envs/$$env && terraform init -backend=false >/dev/null && terraform validate ) || exit 1; \
+	done
 
 lint:
 	$(BIN)/tflint --recursive --chdir=terraform/
@@ -66,27 +78,115 @@ lint:
 sec:
 	$(BIN)/tfsec terraform/
 
+# ----------------------------------------------------------------------------
+# Apply pipeline (local override path; CI is canonical)
+# ----------------------------------------------------------------------------
+
 bootstrap:
-	cd $(TF_BOOTSTRAP) && terraform init && terraform apply
+	cd $(TF_BOOTSTRAP) && terraform init && terraform apply -var-file=$(TFVARS_JSON)
+	@$(MAKE) regenerate-backend
 
-platform:
-	cd $(TF_PLATFORM)  && terraform init \
-	  && terraform apply -var-file=$(TFVARS)
+regenerate-backend:
+	@cd $(TF_BOOTSTRAP) && terraform output -raw backend_hcl > $(BACKEND_HCL)
+	@echo ">>> $(BACKEND_HCL) regenerated:"
+	@cat $(BACKEND_HCL)
 
-regional:
-	cd $(TF_REGIONAL)  && terraform init \
-	  && terraform apply -var-file=$(TFVARS)
+platform: $(BACKEND_HCL)
+	cd $(TF_PLATFORM) && \
+	  terraform init -reconfigure -backend-config=$(BACKEND_HCL) && \
+	  terraform apply -var-file=$(TFVARS_JSON)
+
+# Loop over all enabled regions. Each iteration is independent — different
+# state key, different lock, different blast radius.
+regional: $(BACKEND_HCL)
+	@for r in $(ACTIVE_REGIONS); do \
+	  echo ""; \
+	  echo "=================================================="; \
+	  echo ">>> regional apply: $$r"; \
+	  echo "=================================================="; \
+	  $(MAKE) --no-print-directory regional-one REGION=$$r || exit 1; \
+	done
+
+# Single-region apply (called by `regional` loop, or invoked directly with
+# REGION=eu-central-1 to apply just one).
+regional-one: $(BACKEND_HCL)
+	@test -n "$(REGION)" || (echo "ERROR: REGION=<region> required"; exit 1)
+	@bucket=$$(cd $(TF_BOOTSTRAP) && terraform output -raw bucket_name); \
+	tfstate_region=$$(cd $(TF_BOOTSTRAP) && terraform output -raw region); \
+	platform_region=$$(jq -r '.platform_region' $(TFVARS_JSON)); \
+	cidr=$$(jq -r '.regions["$(REGION)"].cidr' $(TFVARS_JSON)); \
+	node_instance=$$(jq -r '.regions["$(REGION)"].node_instance' $(TFVARS_JSON)); \
+	node_min=$$(jq -r '.regions["$(REGION)"].node_min' $(TFVARS_JSON)); \
+	node_max=$$(jq -r '.regions["$(REGION)"].node_max' $(TFVARS_JSON)); \
+	cd $(TF_REGIONAL) && \
+	  terraform init -reconfigure \
+	    -backend-config="bucket=$$bucket" \
+	    -backend-config="region=$$tfstate_region" \
+	    -backend-config="key=regional/$(REGION)/terraform.tfstate" \
+	    -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
+	    -backend-config="encrypt=true" && \
+	  TF_VAR_tfstate_bucket=$$bucket \
+	  TF_VAR_tfstate_region=$$tfstate_region \
+	  TF_VAR_platform_region=$$platform_region \
+	  TF_VAR_region=$(REGION) \
+	  TF_VAR_vpc_cidr=$$cidr \
+	  TF_VAR_node_instance=$$node_instance \
+	  TF_VAR_node_min=$$node_min \
+	  TF_VAR_node_max=$$node_max \
+	  terraform apply
 
 all: bootstrap platform regional
 
-# DR drill: tear down the regional workload only. The platform env (Route 53
-# zone, ECR repo, Grafana dashboards, SSM parameters) intentionally survives.
-destroy-regional:
-	cd $(TF_REGIONAL)  && terraform destroy -var-file=$(TFVARS)
+# DR drill: tear down ONE region (per-region state key isolates the
+# blast). Others (if enabled) and platform env stay alive.
+destroy-region: $(BACKEND_HCL)
+	@test -n "$(REGION)" || (echo "ERROR: REGION=<region> required"; exit 1)
+	@bucket=$$(cd $(TF_BOOTSTRAP) && terraform output -raw bucket_name); \
+	tfstate_region=$$(cd $(TF_BOOTSTRAP) && terraform output -raw region); \
+	platform_region=$$(jq -r '.platform_region' $(TFVARS_JSON)); \
+	cidr=$$(jq -r '.regions["$(REGION)"].cidr' $(TFVARS_JSON)); \
+	node_instance=$$(jq -r '.regions["$(REGION)"].node_instance' $(TFVARS_JSON)); \
+	node_min=$$(jq -r '.regions["$(REGION)"].node_min' $(TFVARS_JSON)); \
+	node_max=$$(jq -r '.regions["$(REGION)"].node_max' $(TFVARS_JSON)); \
+	cd $(TF_REGIONAL) && \
+	  terraform init -reconfigure \
+	    -backend-config="bucket=$$bucket" \
+	    -backend-config="region=$$tfstate_region" \
+	    -backend-config="key=regional/$(REGION)/terraform.tfstate" \
+	    -backend-config="dynamodb_table=aegis-stateless-tfstate-lock" \
+	    -backend-config="encrypt=true" && \
+	  TF_VAR_tfstate_bucket=$$bucket \
+	  TF_VAR_tfstate_region=$$tfstate_region \
+	  TF_VAR_platform_region=$$platform_region \
+	  TF_VAR_region=$(REGION) \
+	  TF_VAR_vpc_cidr=$$cidr \
+	  TF_VAR_node_instance=$$node_instance \
+	  TF_VAR_node_min=$$node_min \
+	  TF_VAR_node_max=$$node_max \
+	  terraform destroy
 
-# Full teardown (post-submission cleanup). Removes platform too.
-destroy-platform:
-	cd $(TF_PLATFORM)  && terraform destroy -var-file=$(TFVARS)
+# Full teardown of platform (post-submission cleanup). bootstrap's bucket
+# + lock table have lifecycle prevent_destroy — operator must edit those
+# blocks first for a true full teardown.
+destroy-platform: $(BACKEND_HCL)
+	cd $(TF_PLATFORM) && \
+	  terraform init -reconfigure -backend-config=$(BACKEND_HCL) && \
+	  terraform destroy -var-file=$(TFVARS_JSON)
+
+# ----------------------------------------------------------------------------
+# Housekeeping
+# ----------------------------------------------------------------------------
 
 clean-bin:
 	rm -rf $(BIN)
+
+clean-backend:
+	rm -f $(BACKEND_HCL)
+
+# Materialize backend.hcl from bootstrap state if missing.
+$(BACKEND_HCL):
+	@if [ ! -f $(TF_BOOTSTRAP)/terraform.tfstate ]; then \
+	  echo "ERROR: bootstrap state missing — run 'make bootstrap' first."; \
+	  exit 1; \
+	fi
+	@$(MAKE) regenerate-backend

@@ -1,0 +1,63 @@
+output "zone_id" {
+  description = "Route 53 hosted zone ID (consumed by regional/ for A-alias records)."
+  value       = aws_route53_zone.main.zone_id
+}
+
+output "zone_name" {
+  description = "Route 53 hosted zone name."
+  value       = aws_route53_zone.main.name
+}
+
+output "zone_name_servers" {
+  description = "AWS-assigned authoritative name servers for the zone (for `dig @<ns>` demo)."
+  value       = aws_route53_zone.main.name_servers
+}
+
+output "ecr_repository_url" {
+  description = "ECR repo URL where aegis-greeter pushes images."
+  value       = aws_ecr_repository.greeter.repository_url
+}
+
+output "ecr_repository_arn" {
+  description = "ECR repo ARN (referenced by aegis-greeter CI IAM role)."
+  value       = aws_ecr_repository.greeter.arn
+}
+
+output "greeter_ci_role_arn" {
+  description = "IAM role ARN assumed by aegis-greeter CI for ECR push (via GitHub OIDC)."
+  value       = aws_iam_role.greeter_ci.arn
+}
+
+output "infra_ci_role_arn" {
+  description = "IAM role ARN assumed by aegis-stateless CI for read-only AWS (terraform plan on any branch / PR). Scoped to ReadOnlyAccess."
+  value       = aws_iam_role.infra_ci.arn
+}
+
+output "infra_apply_role_arn" {
+  description = "IAM role ARN assumed by aegis-stateless CI for terraform apply. Trust scoped to refs/heads/main only — PRs cannot assume this role. Permissions: AdministratorAccess (least-privilege scoping is tradeoffs work)."
+  value       = aws_iam_role.infra_apply.arn
+}
+
+output "grafana_cloud_ssm_paths" {
+  description = "SSM Parameter Store paths holding Grafana Cloud creds. regional/ env reads these via data.aws_ssm_parameter."
+  value = {
+    api_token             = aws_ssm_parameter.gc_api_token.name
+    remote_write_username = aws_ssm_parameter.gc_remote_write_username.name
+    mimir_url             = aws_ssm_parameter.gc_mimir_url.name
+    loki_url              = aws_ssm_parameter.gc_loki_url.name
+    tempo_url             = aws_ssm_parameter.gc_tempo_url.name
+    pyroscope_url         = aws_ssm_parameter.gc_pyroscope_url.name
+  }
+}
+
+output "alb_access_logs_bucket" {
+  description = "S3 bucket where ALBs write per-request access logs."
+  value       = aws_s3_bucket.alb_access_logs.id
+}
+
+output "public_dashboard_urls" {
+  description = "Read-only public share URLs for Grafana dashboards (linked from README for reviewer)."
+  value = {
+    greeter_overview = "${var.grafana_cloud_url}/public-dashboards/${grafana_dashboard_public.greeter_overview.access_token}"
+  }
+}
