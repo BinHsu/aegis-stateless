@@ -86,7 +86,7 @@ jobs:
         with:
           terraform_version: 1.14.8
           terraform_wrapper: false
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_INFRA_CI_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -137,7 +137,7 @@ jobs:
         with:
           terraform_version: 1.14.8
           terraform_wrapper: false
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_INFRA_CI_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
