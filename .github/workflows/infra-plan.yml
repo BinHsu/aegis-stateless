@@ -194,7 +194,7 @@ jobs:
     if: ${{ always() && github.event_name == 'pull_request' && vars.BOOTSTRAP_COMPLETE == 'true' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: plans/
       - name: post combined plan diff as PR comment
