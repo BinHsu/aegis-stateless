@@ -7,6 +7,10 @@ locals {
 }
 
 # ---- state bucket ---------------------------------------------------------
+# S3 access logging on the state bucket would need a separate log bucket
+# (recursion). CloudTrail S3 data events are the production answer for
+# state-access audit; documented in docs/tradeoffs.md.
+#tfsec:ignore:aws-s3-enable-bucket-logging
 resource "aws_s3_bucket" "tfstate" {
   bucket = local.bucket_name
 

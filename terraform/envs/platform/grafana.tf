@@ -11,10 +11,6 @@ data "grafana_data_source" "prometheus" {
   name = "grafanacloud-aegis-prom"
 }
 
-data "grafana_data_source" "loki" {
-  name = "grafanacloud-aegis-logs"
-}
-
 # ---- folder ---------------------------------------------------------------
 resource "grafana_folder" "aegis_stateless" {
   title = "aegis-stateless"

@@ -27,6 +27,7 @@ KUBECONFORM_VERSION=v0.6.7
 HADOLINT_VERSION=v2.12.0
 JQ_VERSION=1.7.1
 GITLEAKS_VERSION=8.18.4
+KUSTOMIZE_VERSION=5.4.3
 
 # ---- OS / arch detection ---------------------------------------------------
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')   # darwin | linux
@@ -162,6 +163,21 @@ curl -fsSL -o gitleaks_checksums.txt \
 verify_sha256 "$GITLEAKS_TGZ" gitleaks_checksums.txt
 tar -xzf "$GITLEAKS_TGZ" -C "$BIN" gitleaks
 chmod +x "$BIN/gitleaks"
+
+# ---- kustomize -------------------------------------------------------------
+# Renders k8s/overlays/prod for kubeconform validation (CI + local). Used
+# instead of `kubectl kustomize` to keep the toolchain project-local (no
+# host kubectl dependency). Release tag form: kustomize/vX.Y.Z; asset
+# kustomize_vX.Y.Z_<os>_<arch>.tar.gz.
+echo ">>> kustomize ${KUSTOMIZE_VERSION} (${OS}/${ARCH})"
+KUSTOMIZE_TGZ="kustomize_v${KUSTOMIZE_VERSION}_${OS}_${ARCH}.tar.gz"
+curl -fsSL -o "$KUSTOMIZE_TGZ" \
+  "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/${KUSTOMIZE_TGZ}"
+curl -fsSL -o kustomize_checksums.txt \
+  "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/checksums.txt"
+verify_sha256 "$KUSTOMIZE_TGZ" kustomize_checksums.txt
+tar -xzf "$KUSTOMIZE_TGZ" -C "$BIN" kustomize
+chmod +x "$BIN/kustomize"
 
 # ---- done -----------------------------------------------------------------
 echo

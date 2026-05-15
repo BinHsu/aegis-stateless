@@ -86,7 +86,11 @@ lint:
 	$(BIN)/tflint --recursive --chdir=terraform/
 
 sec:
-	$(BIN)/tfsec terraform/
+	# --exclude-downloaded-modules: scan our code, not third-party module
+	# internals (terraform-aws-modules/*). Their config choices that we
+	# rely on (EKS public endpoint, VPC flow logs) are deliberate + noted
+	# in docs/tradeoffs.md; tfsec scanning their source is just noise.
+	$(BIN)/tfsec terraform/ --exclude-downloaded-modules
 
 # ----------------------------------------------------------------------------
 # Apply pipeline (local override path; CI is canonical)

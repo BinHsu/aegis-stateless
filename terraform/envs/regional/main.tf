@@ -18,13 +18,8 @@ module "stack" {
   node_min      = var.node_min
   node_max      = var.node_max
 
-  ecr_url         = data.terraform_remote_state.platform.outputs.ecr_repository_url
-  zone_id         = data.terraform_remote_state.platform.outputs.zone_id
-  zone_name       = data.terraform_remote_state.platform.outputs.zone_name
-  alb_logs_bucket = data.terraform_remote_state.platform.outputs.alb_access_logs_bucket
-  repo_url_https  = var.repo_url_https
-  repo_url_ssh    = var.repo_url_ssh
-  repo_name       = var.repo_name
+  repo_url_ssh = var.repo_url_ssh
+  repo_name    = var.repo_name
 
   gc_api_token             = data.aws_ssm_parameter.gc_api_token.value
   gc_remote_write_username = data.aws_ssm_parameter.gc_remote_write_username.value

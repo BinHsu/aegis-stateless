@@ -7,6 +7,11 @@
 # On free private repos, this resource will fail to apply — adjust based
 # on your plan.
 
+# Signed commits are not enforced — it would block any unsigned local
+# commit and require every contributor to configure GPG/SSH signing.
+# Documented in docs/tradeoffs.md as a hardening option for a team that
+# has commit signing set up.
+#tfsec:ignore:github-branch_protections-require_signed_commits
 resource "github_branch_protection" "main" {
   repository_id = "aegis-stateless"
   pattern       = "main"

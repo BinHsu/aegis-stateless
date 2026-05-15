@@ -7,8 +7,28 @@ locals {
   alb_access_logs_bucket_name = "aegis-stateless-alb-access-logs-${data.aws_caller_identity.current.account_id}"
 }
 
+# This IS the access-log bucket — meta-logging it would recurse
+# (CloudTrail S3 data events are the production audit answer). ALB access
+# logs are write-once with a 7-day lifecycle, so versioning adds cost for
+# no recovery benefit.
+#tfsec:ignore:aws-s3-enable-bucket-logging
+#tfsec:ignore:aws-s3-enable-versioning
 resource "aws_s3_bucket" "alb_access_logs" {
   bucket = local.alb_access_logs_bucket_name
+}
+
+# ALB log delivery only supports SSE-S3 (AES256) — the ALB log-delivery
+# service cannot write to a bucket encrypted with a customer-managed KMS
+# key. AES256 is a hard AWS constraint here, not a shortcut.
+#tfsec:ignore:aws-s3-encryption-customer-key
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_access_logs" {
+  bucket = aws_s3_bucket.alb_access_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "alb_access_logs" {

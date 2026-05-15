@@ -1,6 +1,14 @@
+# AES256 (AWS-managed) is the take-home encryption choice; customer-managed
+# KMS for ECR is documented in docs/tradeoffs.md as production hardening.
+#tfsec:ignore:aws-ecr-repository-customer-key
 resource "aws_ecr_repository" "greeter" {
-  name                 = var.ecr_repository_name
-  image_tag_mutability = "MUTABLE"
+  name = var.ecr_repository_name
+
+  # IMMUTABLE — the sibling repo's CI pushes a unique commit-SHA tag per
+  # build and bumps k8s/overlays/prod/kustomization.yaml to match. Tags
+  # are never overwritten, so immutability is free correctness: a given
+  # tag always resolves to the same image digest.
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true

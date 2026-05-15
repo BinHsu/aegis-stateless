@@ -52,12 +52,6 @@ variable "github_token" {
 }
 
 # ---- repo refs (committed defaults; rarely changed) -----------------------
-variable "repo_url_https" {
-  description = "HTTPS URL of aegis-stateless (used by ArgoCD Application CR source.repoURL via the SSH-aliased secret)."
-  type        = string
-  default     = "https://github.com/BinHsu/aegis-stateless"
-}
-
 variable "repo_url_ssh" {
   description = "SSH URL of aegis-stateless (referenced by the ArgoCD repository Secret data.url)."
   type        = string

@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Prod overlay — what ArgoCD's Application CR points at
+# (k8s/overlays/prod). ArgoCD renders this kustomization and syncs the
+# result into the greeter namespace.
+
+resources:
+  - ../../base
+
+# Image — sibling repo (aegis-greeter) CI bumps `newTag` here on every
+# build (commit-back via the INFRA_REPO_PAT fine-grained token), and
+# ArgoCD then detects the git change and syncs.
+#
+# `newName` resolves to the ECR repo URL provisioned by the platform/
+# TF env: <account-id>.dkr.ecr.<region>.amazonaws.com/aegis-greeter.
+# The placeholder below is overwritten at first CI image push.
+images:
+  - name: aegis-greeter
+    newName: aegis-greeter # CI rewrites to the full ECR URL
+    newTag: latest         # CI rewrites to the immutable image tag
+
+# Prod replica floor matches the base (2). HPA scales 2→10 on CPU.

@@ -1,5 +1,11 @@
+# SSE-at-rest with the AWS-managed SNS key. A customer-managed CMK is
+# documented in docs/tradeoffs.md as production hardening — not take-home
+# scope (extra key + key-policy management for a low-sensitivity budget
+# alert topic).
+#tfsec:ignore:aws-sns-topic-encryption-use-cmk
 resource "aws_sns_topic" "budget_alerts" {
-  name = "aegis-stateless-budget-alerts"
+  name              = "aegis-stateless-budget-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "budget_alerts_email" {

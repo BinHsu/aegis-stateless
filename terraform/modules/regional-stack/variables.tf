@@ -24,30 +24,11 @@ variable "node_max" {
   type        = number
 }
 
-variable "ecr_url" {
-  description = "ECR repository URL (from platform/) — referenced by k8s manifests / image-tag bumps from sibling CI."
-  type        = string
-}
-
-variable "zone_id" {
-  description = "Route 53 hosted zone ID (from platform/). Not used directly here — exported so regional/ can build alias records."
-  type        = string
-}
-
-variable "zone_name" {
-  description = "Route 53 hosted zone name (from platform/)."
-  type        = string
-}
-
-variable "alb_logs_bucket" {
-  description = "S3 bucket for ALB access logs (in platform/). ALB Ingress access_logs annotation points at this bucket with region-prefixed key."
-  type        = string
-}
-
-variable "repo_url_https" {
-  description = "HTTPS URL of aegis-stateless (used by ArgoCD Application CR source.repoURL via the SSH-aliased secret)."
-  type        = string
-}
+# NOTE: ecr_url / zone_id / zone_name / alb_logs_bucket / repo_url_https
+# are intentionally NOT module inputs — nothing in this module consumes
+# them. The greeter image reference is set in k8s/overlays/prod (kustomize),
+# Route 53 records are deferred to external-dns, and ArgoCD authenticates
+# via the SSH repo URL. Re-add here only when a consumer actually exists.
 
 variable "repo_url_ssh" {
   description = "SSH URL of aegis-stateless (referenced by the ArgoCD repository Secret data.url)."
