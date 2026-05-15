@@ -37,9 +37,15 @@ module "eks" {
     }
   }
 
-  # Cluster-creator (the IAM principal running `make` locally) gets
-  # cluster-admin via the EKS access-entry API — no aws-auth ConfigMap.
-  enable_cluster_creator_admin_permissions = true
+  # OFF — this flag injects the *running caller's* ARN into access_entries,
+  # which is identity-dependent: a local `make` run (IAM user) and a CI run
+  # (the aegis-stateless-apply role) would compute different sets, causing
+  # drift; and when CI runs as aegis-stateless-apply it duplicates the
+  # explicit infra_apply entry below → `CreateAccessEntry: ResourceInUse`.
+  # The cluster's creating principal keeps implicit admin regardless, so a
+  # local operator still has kubectl access. CI access is the explicit,
+  # deterministic access_entries below.
+  enable_cluster_creator_admin_permissions = false
 
   # The CI roles need cluster access too: `terraform plan`/`apply` for the
   # regional env reads Helm release state (stored in K8s Secrets) and the
