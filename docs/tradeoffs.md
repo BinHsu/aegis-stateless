@@ -92,12 +92,17 @@ a free private repo cannot apply the resource. The CI workflows still run
 "required status checks + linear history" merge gate is convention, not
 enforcement.
 
-- **Production**: make the repo public (branch protection is then free, and
-  aligns with this repo's portfolio intent — the anonymization policy already
-  treats every committed file as public), or move to GitHub Pro; then set
-  `enable_branch_protection = true`.
-- **Trigger**: any setting where merges to `main` must be machine-enforced.
-- **Effort**: one variable flip (plus the public/Pro decision).
+- **Production**: move to GitHub Pro (keeps the repo private), then set
+  `enable_branch_protection = true`. Going *public* would also make branch
+  protection free, but a public repo accepts fork PRs and issues from anyone —
+  noise to triage, and fork-PR workflow runs to gate (`Settings → Actions →
+  Require approval for all outside collaborators`). For review, granting the
+  reviewer individual read access is cleaner than going public: no fork
+  surface, no public CI logs (which would otherwise expose the AWS account ID
+  + ARNs). Public is a deliberate later step for portfolio circulation, not a
+  submission requirement.
+- **Trigger**: a team setting where merges to `main` must be machine-enforced.
+- **Effort**: one variable flip (plus the Pro/public decision).
 
 ### Signed commits not enforced
 
