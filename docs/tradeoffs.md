@@ -71,6 +71,23 @@ its *permissions* are broad.
 - **Trigger**: production, or a shared AWS account.
 - **Effort**: ~1 day (derive the action set from a plan, iterate).
 
+### EKS cluster access lists a single operator
+
+The cluster's EKS access entries are explicit and deterministic — the two CI
+roles plus one human operator (`var.operator_principal_arn`). One operator is
+fine for a take-home; a team is not a list of individuals.
+
+- **Production**: map an IAM Identity Center (SSO) permission set or an IAM
+  group to the access entry, so operator access is granted by group
+  membership, not by editing Terraform for every joiner/leaver. Each EKS
+  access entry still targets one principal ARN, so the group/SSO role ARN
+  becomes the single entry and membership is managed in the identity provider.
+- **Trigger**: more than one human needs cluster access.
+- **Effort**: ~0.5 day (once an IdP group / SSO permission set exists).
+- **Note**: `enable_cluster_creator_admin_permissions` is deliberately off —
+  it injects the *running caller's* ARN, which is non-deterministic between a
+  local apply and a CI apply. All access is the explicit `access_entries`.
+
 ### AWS-managed KMS keys
 
 S3 state, the ALB-logs bucket, ECR, and the SNS topic use AWS-managed keys

@@ -120,6 +120,7 @@ jobs:
           TF_VAR_tfstate_bucket:  ${{ secrets.TFSTATE_BUCKET }}
           TF_VAR_tfstate_region:  ${{ secrets.TFSTATE_REGION }}
           TF_VAR_github_token:    ${{ secrets.GH_DEPLOY_KEY_PAT }}
+          TF_VAR_operator_principal_arn: ${{ secrets.OPERATOR_PRINCIPAL_ARN }}
         run: |
           cd terraform/envs/regional
           terraform init -reconfigure \

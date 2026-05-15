@@ -39,24 +39,31 @@ module "eks" {
 
   # OFF — this flag injects the *running caller's* ARN into access_entries,
   # which is identity-dependent: a local `make` run (IAM user) and a CI run
-  # (the aegis-stateless-apply role) would compute different sets, causing
-  # drift; and when CI runs as aegis-stateless-apply it duplicates the
-  # explicit infra_apply entry below → `CreateAccessEntry: ResourceInUse`.
-  # The cluster's creating principal keeps implicit admin regardless, so a
-  # local operator still has kubectl access. CI access is the explicit,
-  # deterministic access_entries below.
+  # (the aegis-stateless-apply role) compute different sets, causing drift,
+  # and when CI runs as aegis-stateless-apply it duplicates the explicit
+  # infra_apply entry below → `CreateAccessEntry: ResourceInUse`. All cluster
+  # access is the explicit, deterministic access_entries below — the human
+  # operator included, so operator access does not depend on the (invisible,
+  # creator-bound) EKS implicit grant and survives a recreate by any
+  # principal.
   enable_cluster_creator_admin_permissions = false
 
-  # The CI roles need cluster access too: `terraform plan`/`apply` for the
-  # regional env reads Helm release state (stored in K8s Secrets) and the
-  # kubernetes_* resources. Both roles get a ClusterAdmin access entry —
-  # the AWS-side trust scoping (ci = read-only AWS / any ref; apply =
-  # admin AWS / refs/heads/main only) is the real blast-radius boundary;
-  # a `terraform plan` run by the ci role is non-mutating regardless of
-  # its K8s rights. Least-privilege K8s RBAC for a terraform-with-Helm
-  # plan (Helm state lives in Secrets, which the EKS View policy cannot
-  # read) would be a bespoke role — deferred, see docs/tradeoffs.md.
+  # Every principal that needs cluster access is listed explicitly. The CI
+  # roles read/manage Helm release state (stored in K8s Secrets, which the
+  # EKS View policy cannot read) so they get ClusterAdmin; the AWS-side
+  # trust scoping (ci = read-only AWS / any ref; apply = admin AWS /
+  # refs/heads/main) is the real blast-radius boundary. Scaling this to a
+  # team of operators (IAM group / SSO-mapped entries) is in tradeoffs.md.
   access_entries = {
+    operator = {
+      principal_arn = var.operator_principal_arn
+      policy_associations = {
+        cluster_admin = {
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
     infra_ci = {
       principal_arn = var.ci_role_arn
       policy_associations = {

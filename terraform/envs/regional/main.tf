@@ -21,8 +21,9 @@ module "stack" {
   repo_url_ssh = var.repo_url_ssh
   repo_name    = var.repo_name
 
-  ci_role_arn    = data.terraform_remote_state.platform.outputs.infra_ci_role_arn
-  apply_role_arn = data.terraform_remote_state.platform.outputs.infra_apply_role_arn
+  ci_role_arn            = data.terraform_remote_state.platform.outputs.infra_ci_role_arn
+  apply_role_arn         = data.terraform_remote_state.platform.outputs.infra_apply_role_arn
+  operator_principal_arn = var.operator_principal_arn
 
   gc_api_token          = data.aws_ssm_parameter.gc_api_token.value
   gc_mimir_url          = data.aws_ssm_parameter.gc_mimir_url.value

@@ -51,6 +51,11 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "operator_principal_arn" {
+  description = "ARN of the human operator's IAM principal — gets an explicit EKS ClusterAdmin access entry. Supply via gitignored secrets.auto.tfvars locally; GH Actions secret OPERATOR_PRINCIPAL_ARN in CI. Must be the SAME value in both."
+  type        = string
+}
+
 # ---- repo refs (committed defaults; rarely changed) -----------------------
 variable "repo_url_ssh" {
   description = "SSH URL of aegis-stateless (referenced by the ArgoCD repository Secret data.url)."

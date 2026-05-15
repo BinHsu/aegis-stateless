@@ -50,6 +50,11 @@ variable "apply_role_arn" {
   type        = string
 }
 
+variable "operator_principal_arn" {
+  description = "ARN of the human operator's IAM principal. Gets an explicit EKS ClusterAdmin access entry so operator cluster access is declarative + survives a cluster recreate by any principal (the implicit creator grant does not — see eks.tf)."
+  type        = string
+}
+
 # ---- Grafana Cloud creds (sensitive) -------------------------------------
 variable "gc_api_token" {
   description = "Grafana Cloud API token (admin on the aegis stack). Embedded in a K8s Secret used by Alloy."
