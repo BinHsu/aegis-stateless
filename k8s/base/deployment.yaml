@@ -95,8 +95,16 @@ spec:
             # --- OpenTelemetry contract (see aegis-greeter issue #1) ---
             # App SDK pushes OTLP to the node-local Grafana Alloy
             # DaemonSet; Pyroscope SDK pushes profiles to the same.
+            # OTLP endpoint is bare host:port — NO http:// scheme. The
+            # OTLP/gRPC exporter treats the whole value as the dial target;
+            # a scheme makes gRPC append :443 → "too many colons in
+            # address" and every export fails. INSECURE=true because
+            # Alloy's OTLP receiver is plaintext gRPC (no TLS).
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://$(NODE_IP):4317"
+              value: "$(NODE_IP):4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+            # Pyroscope ingest is HTTP — it DOES want the http:// scheme.
             - name: PYROSCOPE_ENDPOINT
               value: "http://$(NODE_IP):4040"
             - name: OTEL_SERVICE_NAME
