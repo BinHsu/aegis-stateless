@@ -17,7 +17,10 @@ persistent data; there is nothing to lose and nothing to restore. The metric a
 stateful system fights for is trivially satisfied here, and that is the point
 of the stateless architecture.
 
-**RTO is stated as a measured 20-30 minutes**, broken down by what dominates:
+**The measured number is a *cold-rebuild* RTO** — the time to reconstruct the
+region from zero (Terraform state + git), with no warm standby. Naming it
+matters: a *failover* RTO and a *cold-rebuild* RTO are different numbers for
+different failures. It is **20-30 minutes**, broken down by what dominates:
 
 | Phase | Time |
 |---|---|
@@ -42,6 +45,12 @@ report to `docs/evidence/`. The full failure-mode matrix and procedure are in
   (Kubernetes, seconds), a dead node (managed node group, ~2-5 min), an
   impaired AZ (multi-AZ replicas absorb it). Only region loss needs the
   IaC + GitOps recovery path, so that is the drill scenario.
+- The cold-rebuild RTO is the number that matters most: it is the recovery
+  path for the failure class redundancy *cannot* cover — operator error, or a
+  bad change GitOps faithfully propagates to every replica. Multi-region
+  failover (designed via Pattern X, not deployed) is a different, smaller
+  number (~1-2 min) for a narrower failure: a region dying. The drill measures
+  reconstructability, not redundancy.
 - The drill proves the real claim: Terraform state + git are the source of
   truth; the workload converges from zero with no manual `kubectl`.
 - Evidence is committed to git, not left in a live environment — the cluster is

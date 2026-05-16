@@ -91,7 +91,7 @@ cat > "$REPORT" <<EOF
 | 1 — teardown ($CLUSTER destroyed) | $T0_ts → $T1_ts | $TEARDOWN |
 | 2 — rebuild (Terraform re-apply) | $T1_ts → $T2_ts | $REBUILD |
 | 3 — reconverge (ArgoCD syncs from git) | $T2_ts → $T3_ts | $RECONVERGE |
-| **Measured RTO** (teardown start → workload back) | $T1_ts → $T3_ts | **$RTO** |
+| **Measured cold-rebuild RTO** (teardown start → workload back) | $T1_ts → $T3_ts | **$RTO** |
 
 The workload was reconstructed from Terraform state + git with no manual
 intervention beyond running this script. Terraform state is the source of
@@ -115,7 +115,7 @@ the drill window is still queryable:
 Full phase-by-phase CLI output: \`$(basename "$LOG")\` (this directory).
 EOF
 
-say "DONE — measured RTO $RTO"
+say "DONE — measured cold-rebuild RTO $RTO"
 echo "report: $REPORT"
 echo "log:    $LOG"
 echo "Next: capture the Grafana screenshot per the report, then commit docs/evidence/."

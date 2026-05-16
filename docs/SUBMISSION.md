@@ -37,7 +37,7 @@ Stated up front, because they frame every architectural choice.
 | | Target | Basis |
 |---|---|---|
 | **RPO** | **~0 — N/A** | Stateless by design — no persistent data, nothing to lose. The metric a stateful system fights for is trivially satisfied here. |
-| **RTO** | **20–30 min** (region rebuild) | Measured: teardown → IaC re-apply → ArgoCD reconverge. Dominated by EKS cold-provisioning. [ADR-05](adr/05-disaster-recovery.md). |
+| **RTO — cold rebuild** | **20–30 min** | Measured worst case: rebuild a region from zero (teardown → IaC re-apply → ArgoCD reconverge). Dominated by EKS cold-provisioning. Distinct from a *failover* RTO — see [ADR-05](adr/05-disaster-recovery.md). |
 | **SLI** | request success rate, p95 latency | App-emitted over OpenTelemetry; the dashboard's RED panels. |
 | **SLO** (posture) | 5xx < 5%, p95 < 1 s | The alert-rule thresholds — breaching them pages. |
 | **SLA** | none committed | A reference build, not a contracted service. The posture supports the conversation; no number is promised. |
