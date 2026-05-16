@@ -4,6 +4,12 @@ version: 2
 # Terraform provider + module constraints. PRs land like any other change:
 # infra-plan.yml runs fmt/validate/lint/sec/plan, branch protection gates
 # the merge.
+#
+# Terraform ecosystems ignore semver-major: a major bump of an upstream
+# module (terraform-aws-modules vpc/eks/iam) carries renamed inputs and
+# restructured outputs, and can force replacement of live infrastructure
+# (an EKS cluster recreate). That is a deliberate, tested migration — not a
+# routine auto-merge. Dependabot still proposes minor/patch.
 
 updates:
   - package-ecosystem: github-actions
@@ -19,6 +25,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: "tf"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: terraform
     directory: /terraform/envs/platform
@@ -26,6 +35,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: "tf"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: terraform
     directory: /terraform/envs/regional
@@ -33,6 +45,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: "tf"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: terraform
     directory: /terraform/modules/regional-stack
@@ -40,3 +55,6 @@ updates:
       interval: weekly
     commit-message:
       prefix: "tf"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
