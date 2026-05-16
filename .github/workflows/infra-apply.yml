@@ -71,6 +71,9 @@ jobs:
           TF_VAR_grafana_cloud_pyroscope_url:         ${{ secrets.GRAFANA_CLOUD_PYROSCOPE_URL }}
           TF_VAR_budget_alert_email:                  ${{ secrets.BUDGET_ALERT_EMAIL }}
           TF_VAR_github_token:                        ${{ secrets.GH_DEPLOY_KEY_PAT }}
+          TF_VAR_enable_cloudwatch_datasource:        ${{ vars.ENABLE_CLOUDWATCH_DATASOURCE || 'false' }}
+          TF_VAR_grafana_cloud_aws_account_id:        ${{ secrets.GRAFANA_CLOUD_AWS_ACCOUNT_ID }}
+          TF_VAR_grafana_cloud_external_id:           ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
         run: |
           cd terraform/envs/platform
           terraform init -reconfigure \

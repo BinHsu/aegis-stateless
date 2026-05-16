@@ -94,12 +94,14 @@ resource "grafana_data_source" "cloudwatch" {
   type = "cloudwatch"
   name = "aegis-stateless-cloudwatch"
 
-  # defaultRegion is the dashboard's default query region; CloudWatch
-  # queries can still target any region. eu-central-1 (the deployed
-  # region) by construction — platform_region is the single SoT.
+  # authType "grafana_assume_role" — Grafana Cloud's managed assume-role
+  # provider: GC's backend (account grafana_cloud_aws_account_id) assumes
+  # the role below, presenting grafana_cloud_external_id. The IAM role's
+  # trust policy permits exactly that pair. defaultRegion is the
+  # dashboard's default query region; queries can still target any region.
   json_data_encoded = jsonencode({
     defaultRegion = var.platform_region
-    authType      = "arn"
+    authType      = "grafana_assume_role"
     assumeRoleArn = aws_iam_role.grafana_cloudwatch[0].arn
     externalId    = var.grafana_cloud_external_id
   })
