@@ -154,6 +154,10 @@ all: bootstrap platform regional
 # blast). Others (if enabled) and platform env stay alive.
 destroy-region: $(BACKEND_HCL)
 	@test -n "$(REGION)" || (echo "ERROR: REGION=<region> required"; exit 1)
+	# Delete the greeter Ingress first so the ALB controller removes its ALB —
+	# that ALB is not in Terraform state and would otherwise orphan its ENIs
+	# and stall the VPC teardown (DependencyViolation). See scripts/dr/pre-teardown.sh.
+	./scripts/dr/pre-teardown.sh $(REGION)
 	@bucket=$$(cd $(TF_BOOTSTRAP) && terraform output -raw bucket_name); \
 	tfstate_region=$$(cd $(TF_BOOTSTRAP) && terraform output -raw region); \
 	platform_region=$$(jq -r '.platform_region' $(TFVARS_JSON)); \
