@@ -114,14 +114,20 @@ cp terraform/envs/platform/secrets.auto.tfvars.example terraform/envs/platform/s
 cp terraform/envs/regional/secrets.auto.tfvars.example terraform/envs/regional/secrets.auto.tfvars
 # …edit both with real Grafana Cloud + GitHub PAT values (gitignored).
 
-# 3. Create the remote state backend (local state, one-shot).
+# 3. Pick the region(s). regions.auto.tfvars.json is the single source of
+#    truth for which regions deploy — it ships with eu-central-1
+#    `enabled: true` and a complete eu-west-1 entry `enabled: false` (a
+#    ready-to-deploy template). Edit it for your region; flipping a region's
+#    `enabled` to true is all it takes to add one.
+
+# 4. Create the remote state backend (local state, one-shot).
 export AWS_PROFILE=<your-profile>
 make bootstrap
 
-# 4. Apply the slow-lifecycle platform env.
+# 5. Apply the slow-lifecycle platform env.
 make platform
 
-# 5. Apply the workload, looping over enabled regions.
+# 6. Apply the workload, looping over every enabled region.
 make regional
 ```
 
