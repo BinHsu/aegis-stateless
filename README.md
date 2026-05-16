@@ -114,11 +114,15 @@ cp terraform/envs/platform/secrets.auto.tfvars.example terraform/envs/platform/s
 cp terraform/envs/regional/secrets.auto.tfvars.example terraform/envs/regional/secrets.auto.tfvars
 # …edit both with real Grafana Cloud + GitHub PAT values (gitignored).
 
-# 3. Pick the region(s). regions.auto.tfvars.json is the single source of
-#    truth for which regions deploy — it ships with eu-central-1
-#    `enabled: true` and a complete eu-west-1 entry `enabled: false` (a
-#    ready-to-deploy template). Edit it for your region; flipping a region's
-#    `enabled` to true is all it takes to add one.
+# 3. Pick the regions — regions.auto.tfvars.json is the single source of
+#    truth, with two keys:
+#      platform_region — where the Terraform state bucket and the slow-
+#        lifecycle platform layer live (ECR, OIDC, Route 53, budget, SSM).
+#        Set once; it is also the state-bucket region.
+#      regions{}       — which region(s) the workload (VPC + EKS + ArgoCD)
+#        deploys to. Ships with eu-central-1 `enabled: true` and a complete
+#        eu-west-1 entry `enabled: false` — a ready-to-deploy template; flip
+#        a region's `enabled` to true to add it.
 
 # 4. Create the remote state backend (local state, one-shot).
 export AWS_PROFILE=<your-profile>
