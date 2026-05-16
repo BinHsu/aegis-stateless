@@ -295,3 +295,121 @@ resource "grafana_rule_group" "memory_near_limit" {
     }
   }
 }
+
+resource "grafana_rule_group" "node_memory_pressure" {
+  name             = "node-memory-pressure"
+  folder_uid       = grafana_folder.aegis_stateless.uid
+  interval_seconds = 60
+
+  rule {
+    name           = "node memory utilization > 85% over 5 min"
+    for            = "5m"
+    condition      = "C"
+    no_data_state  = "NoData"
+    exec_err_state = "Error"
+
+    data {
+      ref_id         = "A"
+      datasource_uid = data.grafana_data_source.prometheus.uid
+      relative_time_range {
+        from = 300
+        to   = 0
+      }
+      model = jsonencode({
+        editorMode = "code"
+        expr       = "max(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
+        intervalMs = 1000
+        instant    = true
+        refId      = "A"
+      })
+    }
+
+    data {
+      ref_id         = "C"
+      datasource_uid = "__expr__"
+      relative_time_range {
+        from = 0
+        to   = 0
+      }
+      model = jsonencode({
+        type       = "threshold"
+        refId      = "C"
+        expression = "A"
+        conditions = [{
+          type      = "query"
+          evaluator = { type = "gt", params = [0.85] }
+          operator  = { type = "and" }
+          query     = { params = ["A"] }
+        }]
+      })
+    }
+
+    annotations = {
+      summary          = "an aegis-stateless node exceeded 85% memory utilization over 5 min"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "9"
+    }
+    labels = {
+      severity = "warning"
+    }
+  }
+}
+
+resource "grafana_rule_group" "apiserver_error_rate" {
+  name             = "apiserver-error-rate"
+  folder_uid       = grafana_folder.aegis_stateless.uid
+  interval_seconds = 60
+
+  rule {
+    name           = "EKS apiserver 5xx rate > 5% over 5 min"
+    for            = "5m"
+    condition      = "C"
+    no_data_state  = "NoData"
+    exec_err_state = "Error"
+
+    data {
+      ref_id         = "A"
+      datasource_uid = data.grafana_data_source.prometheus.uid
+      relative_time_range {
+        from = 300
+        to   = 0
+      }
+      model = jsonencode({
+        editorMode = "code"
+        expr       = "sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) / clamp_min(sum(rate(apiserver_request_total[5m])), 1e-9)"
+        intervalMs = 1000
+        instant    = true
+        refId      = "A"
+      })
+    }
+
+    data {
+      ref_id         = "C"
+      datasource_uid = "__expr__"
+      relative_time_range {
+        from = 0
+        to   = 0
+      }
+      model = jsonencode({
+        type       = "threshold"
+        refId      = "C"
+        expression = "A"
+        conditions = [{
+          type      = "query"
+          evaluator = { type = "gt", params = [0.05] }
+          operator  = { type = "and" }
+          query     = { params = ["A"] }
+        }]
+      })
+    }
+
+    annotations = {
+      summary          = "EKS apiserver 5xx rate exceeded 5% over 5 min — control-plane degradation"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "11"
+    }
+    labels = {
+      severity = "critical"
+    }
+  }
+}

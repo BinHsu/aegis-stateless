@@ -118,28 +118,33 @@ prometheus.scrape "apiserver" {
 // panel/alert on a new metric = add its name to the relevant keep-list.
 // ============================================================================
 
-// node-exporter + cAdvisor + kube-state-metrics — node, container, and
-// K8s-object health.
+// node-exporter + cAdvisor + kube-state-metrics. The keep-list is exactly
+// the metrics the dashboard panels + alert rules consume: node CPU
+// (panel 8), node memory (panel 9 + alert), container memory (panel 7 +
+// alert), Deployment ready/desired replicas (panel 6 + alert), container
+// memory limit (panel 7 + alert). `up` is kept for scrape-health
+// rendering. Add a panel/alert on a new metric => add its name here.
 prometheus.relabel "infra_keep" {
   forward_to = [prometheus.relabel.add_labels.receiver]
 
   rule {
     source_labels = ["__name__"]
-    regex         = "up|node_cpu_seconds_total|node_load(1|5|15)|node_memory_(MemTotal|MemAvailable|MemFree)_bytes|node_filesystem_(avail|size)_bytes|node_network_(receive|transmit)_bytes_total|node_uname_info|node_boot_time_seconds|container_cpu_usage_seconds_total|container_memory_(working_set_bytes|rss)|container_network_(receive|transmit)_bytes_total|kube_deployment_(status_replicas_ready|status_replicas_available|spec_replicas)|kube_pod_status_(ready|phase)|kube_pod_container_status_(restarts_total|last_terminated_reason)|kube_pod_container_resource_(limits|requests)|kube_node_status_(condition|capacity|allocatable)"
+    regex         = "up|node_cpu_seconds_total|node_memory_(MemTotal|MemAvailable)_bytes|container_memory_working_set_bytes|kube_deployment_(status_replicas_ready|spec_replicas)|kube_pod_container_resource_limits"
     action        = "keep"
   }
 }
 
-// apiserver — control-plane request rate / error rate / in-flight depth.
-// Request-duration histograms (_bucket/_count/_sum, per verb×resource×
-// scope) are the cardinality hog and are dropped — control-plane health
-// needs request + error rate, not apiserver-side latency quantiles.
+// apiserver — only apiserver_request_total, consumed by the request-rate
+// (panel 10) and 5xx-rate (panel 11 + alert) views. Request-duration
+// histograms (per verb×resource×scope) are the cardinality hog and are
+// not kept — control-plane health needs request + error rate, not
+// apiserver-side latency quantiles.
 prometheus.relabel "apiserver_keep" {
   forward_to = [prometheus.relabel.add_labels.receiver]
 
   rule {
     source_labels = ["__name__"]
-    regex         = "up|apiserver_request_total|apiserver_current_inflight_requests|apiserver_longrunning_requests|apiserver_storage_objects|workqueue_depth|workqueue_adds_total"
+    regex         = "up|apiserver_request_total"
     action        = "keep"
   }
 }
