@@ -17,5 +17,5 @@ resources:
 images:
   - name: aegis-greeter
     newName: 677078406165.dkr.ecr.eu-central-1.amazonaws.com/aegis-greeter # CI rewrites to the full ECR URL
-    newTag: c4960d7 # CI rewrites to the immutable image tag
+    newTag: b3d8efa # CI rewrites to the immutable image tag
 # Prod replica floor matches the base (2). HPA scales 2→10 on CPU.
