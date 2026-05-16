@@ -61,7 +61,14 @@ it routes a reviewer, an operator, and a forker to the right document.
 ## Anonymization
 
 Everything tracked by git is treated as public. Committed files carry no
-reviewer or company name, no AWS account ID or ARN, and no personal email.
-Placeholders (`example.com`, `123456789012`) stand in where a value must be
-referenced. The only deliberate identity surface is the GitHub repo URL and the
-Grafana Cloud stack slug — both project codenames, not personal handles.
+reviewer or company name, no personal email, and no AWS account ID or ARN —
+with one structural exception. `k8s/overlays/prod/kustomization.yaml` pins the
+greeter image by its full ECR URL, which embeds the account ID: an ECR
+reference inherently contains it, and the GitOps image-tag commit-back flow
+requires the committed manifest to carry the real reference. An account ID is
+identity surface, not a credential, and the sandbox account is destroyed after
+the demo. The exception is accepted and recorded — with the change path that
+would keep it out of git — in [`tradeoffs.md`](tradeoffs.md). Other
+placeholders (`example.com`, `123456789012`) stand in where a value must be
+referenced. The remaining deliberate identity surfaces are the GitHub repo URL
+and the Grafana Cloud stack slug — project codenames, not personal handles.

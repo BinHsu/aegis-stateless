@@ -22,8 +22,8 @@ BACKEND_HCL := $(ROOT)/backend.hcl
 PATH := $(BIN):$(PATH)
 export PATH
 
-# Neutral default for committed reference. Bin's local shell exports
-# AWS_PROFILE=hivemind to override; reviewer sets their own value.
+# Neutral default for committed reference. Override in your own shell —
+# `export AWS_PROFILE=<your-profile>` — before running make.
 AWS_PROFILE ?= aegis
 export AWS_PROFILE
 

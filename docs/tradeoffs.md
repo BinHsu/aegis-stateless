@@ -148,6 +148,28 @@ GuardDuty, Security Hub, AWS Config are not enabled.
 - **Trigger**: a compliance audit.
 - **Effort**: ~1 day to enable + tune.
 
+### AWS account ID in the committed image manifest
+
+`k8s/overlays/prod/kustomization.yaml` pins the greeter image by its full ECR
+URL — `<account-id>.dkr.ecr.<region>.amazonaws.com/aegis-greeter`. An ECR
+reference structurally embeds the account ID, and the GitOps flow requires it:
+the sibling repo's CI commits the image-tag bump into this manifest, and ArgoCD
+renders the manifest as-is. So the committed file carries the account ID. An
+account ID is identity surface, not a credential, and the sandbox account is
+torn down after the demo — accepted for the take-home, recorded here, not hidden.
+
+- **Production / clean**: keep `newName` a bare `aegis-greeter` placeholder in
+  the committed manifest; inject the real ECR URL through the ArgoCD
+  `Application`'s `spec.source.kustomize.images`, which Terraform sets from the
+  `platform` env's `ecr_repository_url` output. The sibling CI's commit-back
+  then writes only `newTag` (a commit SHA, not sensitive). The account ID then
+  lives in Terraform state and the in-cluster Application object, never in git.
+- **Trigger**: making the repo public for portfolio circulation.
+- **Effort**: ~0.5 day — cross-repo (the sibling `publish.yml` commit-back
+  drops the `newName` write) plus one ArgoCD render-cycle to verify the
+  kustomize image-override merge. This cleans HEAD onward; the account ID
+  remains in prior commits unless history is also rewritten.
+
 ---
 
 ## ALB access logs

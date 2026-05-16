@@ -11,7 +11,9 @@ resources:
 #
 # `newName` resolves to the ECR repo URL provisioned by the platform/
 # TF env: <account-id>.dkr.ecr.<region>.amazonaws.com/aegis-greeter.
-# The placeholder below is overwritten at first CI image push.
+# The placeholder below is overwritten at first CI image push; the
+# resulting committed account ID is an accepted, documented leak —
+# see docs/tradeoffs.md ("AWS account ID in the committed image manifest").
 images:
   - name: aegis-greeter
     newName: 677078406165.dkr.ecr.eu-central-1.amazonaws.com/aegis-greeter # CI rewrites to the full ECR URL
