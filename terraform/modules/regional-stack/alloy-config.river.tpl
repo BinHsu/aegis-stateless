@@ -87,6 +87,43 @@ prometheus.scrape "cadvisor" {
   }
 }
 
+// EKS managed control-plane health — apiserver /metrics, scraped direct
+// from the in-cluster kubernetes Service. node-exporter / kube-state-
+// metrics / cAdvisor only see node + workload state; this is the one job
+// that sees the AWS-managed control plane (apiserver request rate /
+// latency / errors, etcd request latency as the apiserver reports it).
+// EKS exposes /metrics; the grafana/alloy chart's default ClusterRole
+// already grants the nonResourceURLs ["/metrics"] get, so no RBAC change
+// is needed.
+prometheus.scrape "apiserver" {
+  targets = [
+    { __address__ = "kubernetes.default.svc:443" },
+  ]
+  forward_to        = [prometheus.relabel.apiserver_keep.receiver]
+  job_name          = "apiserver"
+  scheme            = "https"
+  bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  tls_config {
+    ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  }
+}
+
+// Cardinality guard (Grafana Cloud free tier ~15k active series). The raw
+// apiserver /metrics endpoint emits well over 10k series on its own —
+// per-(verb,resource,scope) request-duration histogram buckets dominate.
+// Keep only high-signal control-plane health metrics; keep the histogram
+// _count/_sum (request rate + mean latency) but drop _bucket — health
+// needs rate + errors, not apiserver-side quantiles.
+prometheus.relabel "apiserver_keep" {
+  forward_to = [prometheus.relabel.add_labels.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "up|apiserver_request_total|apiserver_request_duration_seconds_(count|sum)|apiserver_current_inflight_requests|apiserver_longrunning_requests|apiserver_storage_objects|etcd_request_duration_seconds_count|workqueue_depth|workqueue_adds_total|rest_client_requests_total"
+    action        = "keep"
+  }
+}
+
 // Inject cluster + region labels onto every metric (low cardinality,
 // supports multi-region slicing in Grafana).
 prometheus.relabel "add_labels" {
