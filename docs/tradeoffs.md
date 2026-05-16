@@ -200,7 +200,7 @@ profiling are all live. What remains:
 | 1 | **SLO + error budget** (Pyrra / Sloth / OpenSLO) — burn-rate alerts replace static thresholds | Real user traffic + an SLA commitment | ~1 day |
 | 2 | **AWS WAF** on the ALB + managed rule groups | Public exposure that attracts attack volume | ~0.5 day |
 | 3 | **k6 synthetic blackbox** probing of the ALB endpoint | SLO-driven external detection | ~0.5 day |
-| 4 | **`cloudwatch_exporter`** Deployment for ALB-side metrics (`HealthyHostCount` flap, target-group churn) | A need for LB-side signals the app's OTel can't see | ~0.5 day |
+| 4 | **CloudWatch datasource (pull)** for out-of-band infra health — EC2 instance status checks, ALB `HealthyHostCount` / 5xx, the `AWS/EKS` namespace. A Grafana CloudWatch datasource queries CloudWatch at render time; deliberately *not* a `cloudwatch_exporter` Deployment ingesting into Mimir — pulling keeps these metrics off the free-tier series budget. Needs an IAM role the Grafana Cloud account assumes (cross-account trust + external ID). | Infra-layer signals the in-cluster exporters cannot see — and an out-of-band vantage point for when the cluster itself is down (the in-cluster exporters cannot report their own outage) | ~0.5 day |
 | 5 | **AMP + AMG** (managed Prometheus + Grafana on AWS) | Grafana Cloud free-tier limits breached, or org policy forbids external SaaS for telemetry — migration keeps Alloy + the OTel SDK unchanged, only `remote_write` URLs flip | ~0.5 day |
 | 6 | **Cross-region metric/log aggregation** | ≥ 2 regions deployed | ~0.5 day per pair |
 

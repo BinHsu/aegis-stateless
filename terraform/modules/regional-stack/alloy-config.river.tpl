@@ -66,19 +66,19 @@ discovery.relabel "cadvisor" {
 // ============================================================================
 prometheus.scrape "node_exporter" {
   targets    = discovery.relabel.node_exporter.output
-  forward_to = [prometheus.relabel.add_labels.receiver]
+  forward_to = [prometheus.relabel.infra_keep.receiver]
   job_name   = "node-exporter"
 }
 
 prometheus.scrape "kube_state_metrics" {
   targets    = discovery.relabel.kube_state_metrics.output
-  forward_to = [prometheus.relabel.add_labels.receiver]
+  forward_to = [prometheus.relabel.infra_keep.receiver]
   job_name   = "kube-state-metrics"
 }
 
 prometheus.scrape "cadvisor" {
   targets         = discovery.relabel.cadvisor.output
-  forward_to      = [prometheus.relabel.add_labels.receiver]
+  forward_to      = [prometheus.relabel.infra_keep.receiver]
   job_name        = "cadvisor"
   scheme          = "https"
   bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
@@ -91,10 +91,9 @@ prometheus.scrape "cadvisor" {
 // from the in-cluster kubernetes Service. node-exporter / kube-state-
 // metrics / cAdvisor only see node + workload state; this is the one job
 // that sees the AWS-managed control plane (apiserver request rate /
-// latency / errors, etcd request latency as the apiserver reports it).
-// EKS exposes /metrics; the grafana/alloy chart's default ClusterRole
-// already grants the nonResourceURLs ["/metrics"] get, so no RBAC change
-// is needed.
+// errors, in-flight depth). EKS exposes /metrics; the grafana/alloy
+// chart's default ClusterRole already grants the nonResourceURLs
+// ["/metrics"] get, so no RBAC change is needed.
 prometheus.scrape "apiserver" {
   targets = [
     { __address__ = "kubernetes.default.svc:443" },
@@ -108,18 +107,39 @@ prometheus.scrape "apiserver" {
   }
 }
 
-// Cardinality guard (Grafana Cloud free tier ~15k active series). The raw
-// apiserver /metrics endpoint emits well over 10k series on its own —
-// per-(verb,resource,scope) request-duration histogram buckets dominate.
-// Keep only high-signal control-plane health metrics; keep the histogram
-// _count/_sum (request rate + mean latency) but drop _bucket — health
-// needs rate + errors, not apiserver-side quantiles.
+// ============================================================================
+// Cardinality guards — keep-lists before remote_write.
+//
+// Grafana Cloud free tier caps active metric series (~10k). The raw
+// node-exporter / cAdvisor / kube-state-metrics / apiserver endpoints emit
+// well over that combined — Mimir 429-rejects the overflow and dashboards
+// go blank. Each keep-list admits only the metric names the dashboards +
+// alert rules actually query, plus `up` for scrape health. Adding a
+// panel/alert on a new metric = add its name to the relevant keep-list.
+// ============================================================================
+
+// node-exporter + cAdvisor + kube-state-metrics — node, container, and
+// K8s-object health.
+prometheus.relabel "infra_keep" {
+  forward_to = [prometheus.relabel.add_labels.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "up|node_cpu_seconds_total|node_load(1|5|15)|node_memory_(MemTotal|MemAvailable|MemFree)_bytes|node_filesystem_(avail|size)_bytes|node_network_(receive|transmit)_bytes_total|node_uname_info|node_boot_time_seconds|container_cpu_usage_seconds_total|container_memory_(working_set_bytes|rss)|container_network_(receive|transmit)_bytes_total|kube_deployment_(status_replicas_ready|status_replicas_available|spec_replicas)|kube_pod_status_(ready|phase)|kube_pod_container_status_(restarts_total|last_terminated_reason)|kube_pod_container_resource_(limits|requests)|kube_node_status_(condition|capacity|allocatable)"
+    action        = "keep"
+  }
+}
+
+// apiserver — control-plane request rate / error rate / in-flight depth.
+// Request-duration histograms (_bucket/_count/_sum, per verb×resource×
+// scope) are the cardinality hog and are dropped — control-plane health
+// needs request + error rate, not apiserver-side latency quantiles.
 prometheus.relabel "apiserver_keep" {
   forward_to = [prometheus.relabel.add_labels.receiver]
 
   rule {
     source_labels = ["__name__"]
-    regex         = "up|apiserver_request_total|apiserver_request_duration_seconds_(count|sum)|apiserver_current_inflight_requests|apiserver_longrunning_requests|apiserver_storage_objects|etcd_request_duration_seconds_count|workqueue_depth|workqueue_adds_total|rest_client_requests_total"
+    regex         = "up|apiserver_request_total|apiserver_current_inflight_requests|apiserver_longrunning_requests|apiserver_storage_objects|workqueue_depth|workqueue_adds_total"
     action        = "keep"
   }
 }

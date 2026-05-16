@@ -104,8 +104,14 @@ resource "grafana_rule_group" "five_xx_rate" {
       })
     }
 
+    # __dashboardUid__ / __panelId__ link this alert to its dashboard panel:
+    # Grafana shows the alert state on the panel and offers a jump-to-panel
+    # link from the alert. The query stays a separate copy — the link makes
+    # any drift between alert and panel visible at a click.
     annotations = {
-      summary = "aegis-greeter 5xx rate exceeded 5% over 5 min"
+      summary          = "aegis-greeter 5xx rate exceeded 5% over 5 min"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "2"
     }
     labels = {
       severity = "critical"
@@ -162,7 +168,9 @@ resource "grafana_rule_group" "p95_latency" {
     }
 
     annotations = {
-      summary = "aegis-greeter p95 request latency exceeded 1 s over 5 min"
+      summary          = "aegis-greeter p95 request latency exceeded 1 s over 5 min"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "3"
     }
     labels = {
       severity = "warning"
@@ -219,7 +227,9 @@ resource "grafana_rule_group" "pod_ready" {
     }
 
     annotations = {
-      summary = "aegis-greeter Deployment has 0 ready pods"
+      summary          = "aegis-greeter Deployment has 0 ready pods"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "6"
     }
     labels = {
       severity = "critical"
@@ -276,7 +286,9 @@ resource "grafana_rule_group" "memory_near_limit" {
     }
 
     annotations = {
-      summary = "aegis-greeter container memory exceeded 90% of limit over 5 min — OOMKill imminent"
+      summary          = "aegis-greeter container memory exceeded 90% of limit over 5 min — OOMKill imminent"
+      __dashboardUid__ = grafana_dashboard.greeter_overview.uid
+      __panelId__      = "7"
     }
     labels = {
       severity = "warning"
