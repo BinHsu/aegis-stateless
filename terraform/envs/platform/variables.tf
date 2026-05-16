@@ -129,6 +129,26 @@ variable "enable_branch_protection" {
   default     = false
 }
 
+# ---- CloudWatch data source (Tier B — out-of-band infra health) ------------
+variable "enable_cloudwatch_datasource" {
+  description = "Whether to create the Grafana CloudWatch data source + its cross-account IAM role. Default false — it needs a trust relationship to Grafana Cloud's AWS account, so the operator first supplies grafana_cloud_aws_account_id + grafana_cloud_external_id (both shown in the Grafana Cloud UI: Connections -> Add new connection -> CloudWatch -> set up via an IAM role), then flips this true. See docs/tradeoffs.md #4."
+  type        = bool
+  default     = false
+}
+
+variable "grafana_cloud_aws_account_id" {
+  description = "AWS account ID of Grafana Cloud's CloudWatch integration — the principal the cross-account IAM role trusts. Read from the Grafana Cloud CloudWatch setup screen. Only consumed when enable_cloudwatch_datasource = true."
+  type        = string
+  default     = ""
+}
+
+variable "grafana_cloud_external_id" {
+  description = "External ID Grafana Cloud presents when assuming the CloudWatch role — defeats the confused-deputy problem. Read from the Grafana Cloud CloudWatch setup screen. Only consumed when enable_cloudwatch_datasource = true."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "github_token" {
   description = "GitHub PAT for the github TF provider. Needs admin:public_key for deploy key registration (regional-stack consumes this output via remote_state)."
   type        = string
