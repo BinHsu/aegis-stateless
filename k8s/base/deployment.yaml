@@ -109,6 +109,14 @@ spec:
               value: "http://$(NODE_IP):4040"
             - name: OTEL_SERVICE_NAME
               value: "aegis-greeter"
+            # otelhttp defaults to the legacy HTTP semantic conventions
+            # (http_server_duration_milliseconds, http_status_code, no
+            # http_route). The dashboards + alert rules use the current
+            # stable convention; this opt-in makes the SDK emit it —
+            # http.server.request.duration (seconds), http_route,
+            # http_response_status_code, http_server_active_requests.
+            - name: OTEL_SEMCONV_STABILITY_OPT_IN
+              value: "http"
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(POD_NAMESPACE),k8s.node.name=$(NODE_NAME)"
             # --- app config -------------------------------------------
