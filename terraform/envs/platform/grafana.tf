@@ -50,11 +50,122 @@ resource "grafana_notification_policy" "main" {
   repeat_interval = "4h"
 }
 
+# ---- recording rules ------------------------------------------------------
+# Single-source the shared PromQL. Each recording rule records a base
+# series at the finest granularity any consumer needs (every grouping
+# label kept); the dashboard panels and the alert rules below query the
+# recorded metric instead of repeating the rate()/histogram expression.
+# The expensive part — the metric name, the rate window, the service
+# filter — is defined once here. Consumers only filter/aggregate.
+#
+# Note: on first apply a recorded metric does not exist until the rule has
+# evaluated once (interval_seconds), so panels/alerts that query it show
+# no-data for ~1-2 minutes after a cold apply.
+
+resource "grafana_rule_group" "rec_greeter_http_requests" {
+  name             = "rec-greeter-http-requests"
+  folder_uid       = grafana_folder.aegis_stateless.uid
+  interval_seconds = 60
+
+  rule {
+    name = "job:greeter_http_requests:rate5m"
+
+    data {
+      ref_id         = "A"
+      datasource_uid = data.grafana_data_source.prometheus.uid
+      relative_time_range {
+        from = 300
+        to   = 0
+      }
+      model = jsonencode({
+        editorMode = "code"
+        expr       = "sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=\"aegis-greeter\"}[5m]))"
+        intervalMs = 1000
+        instant    = true
+        refId      = "A"
+      })
+    }
+
+    record {
+      from                  = "A"
+      metric                = "job:greeter_http_requests:rate5m"
+      target_datasource_uid = data.grafana_data_source.prometheus.uid
+    }
+  }
+}
+
+resource "grafana_rule_group" "rec_greeter_http_request_duration" {
+  name             = "rec-greeter-http-request-duration"
+  folder_uid       = grafana_folder.aegis_stateless.uid
+  interval_seconds = 60
+
+  rule {
+    name = "job:greeter_http_request_duration:rate5m"
+
+    data {
+      ref_id         = "A"
+      datasource_uid = data.grafana_data_source.prometheus.uid
+      relative_time_range {
+        from = 300
+        to   = 0
+      }
+      model = jsonencode({
+        editorMode = "code"
+        # Bucket rate keeps the `le` label — consumers run histogram_quantile
+        # on the recorded series for whatever percentile they need.
+        expr       = "sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"aegis-greeter\"}[5m]))"
+        intervalMs = 1000
+        instant    = true
+        refId      = "A"
+      })
+    }
+
+    record {
+      from                  = "A"
+      metric                = "job:greeter_http_request_duration:rate5m"
+      target_datasource_uid = data.grafana_data_source.prometheus.uid
+    }
+  }
+}
+
+resource "grafana_rule_group" "rec_apiserver_requests" {
+  name             = "rec-apiserver-requests"
+  folder_uid       = grafana_folder.aegis_stateless.uid
+  interval_seconds = 60
+
+  rule {
+    name = "cluster:apiserver_requests:rate5m"
+
+    data {
+      ref_id         = "A"
+      datasource_uid = data.grafana_data_source.prometheus.uid
+      relative_time_range {
+        from = 300
+        to   = 0
+      }
+      model = jsonencode({
+        editorMode = "code"
+        expr       = "sum by (code) (rate(apiserver_request_total[5m]))"
+        intervalMs = 1000
+        instant    = true
+        refId      = "A"
+      })
+    }
+
+    record {
+      from                  = "A"
+      metric                = "cluster:apiserver_requests:rate5m"
+      target_datasource_uid = data.grafana_data_source.prometheus.uid
+    }
+  }
+}
+
 # ---- alert rules ----------------------------------------------------------
 # One rule_group per alert keeps blast radius small (a single rule update
-# doesn't touch unrelated groups). All four representative alerts follow the
-# same shape: a `data` block with the metric query (refId "A"), a `data`
-# block with a threshold expression (refId "C") referencing "A".
+# doesn't touch unrelated groups). Each follows the same shape: a `data`
+# block with the metric query (refId "A") — querying a recorded metric
+# where one exists — and a `data` block with a threshold expression
+# (refId "C") referencing "A".
 
 resource "grafana_rule_group" "five_xx_rate" {
   name             = "5xx-rate"
@@ -77,7 +188,7 @@ resource "grafana_rule_group" "five_xx_rate" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum(rate(http_server_request_duration_seconds_count{service_name=\"aegis-greeter\",http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service_name=\"aegis-greeter\"}[5m])), 1e-9)"
+        expr       = "sum(job:greeter_http_requests:rate5m{http_response_status_code=~\"5..\"}) / clamp_min(sum(job:greeter_http_requests:rate5m), 1e-9)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -140,7 +251,7 @@ resource "grafana_rule_group" "p95_latency" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"aegis-greeter\"}[5m])))"
+        expr       = "histogram_quantile(0.95, job:greeter_http_request_duration:rate5m)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -376,7 +487,7 @@ resource "grafana_rule_group" "apiserver_error_rate" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) / clamp_min(sum(rate(apiserver_request_total[5m])), 1e-9)"
+        expr       = "sum(cluster:apiserver_requests:rate5m{code=~\"5..\"}) / clamp_min(sum(cluster:apiserver_requests:rate5m), 1e-9)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
