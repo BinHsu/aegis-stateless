@@ -84,10 +84,15 @@ resource "helm_release" "alloy" {
   values = [
     yamlencode({
       controller = {
-        # DaemonSet — one Alloy per node so OTLP/Pyroscope receive_http
-        # binds to host network for direct app-pod-to-collector traffic
-        # via NODE_IP without crossing a Service.
-        type = "daemonset"
+        # DaemonSet on the host network — one Alloy per node, so app pods
+        # reach the OTLP (4317) + Pyroscope (4040) receivers directly at
+        # $(NODE_IP):<port> without crossing a Service. hostNetwork is what
+        # actually binds those ports on the node IP; extraPorts alone only
+        # exposes them inside the pod netns. dnsPolicy ClusterFirstWithHostNet
+        # keeps in-cluster DNS working for the apiserver / cAdvisor scrapes.
+        type        = "daemonset"
+        hostNetwork = true
+        dnsPolicy   = "ClusterFirstWithHostNet"
       }
       alloy = {
         # `pyroscope.receive_http` is a public-preview component; Alloy

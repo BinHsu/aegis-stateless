@@ -187,8 +187,14 @@ otelcol.processor.batch "default" {
 }
 
 // OTel metrics → translate to Prometheus → remote_write to Mimir.
+// resource_to_telemetry_conversion copies OTel resource attributes onto
+// every metric as labels — notably service.name → `service_name`, which
+// the dashboards, alert rules, and recording rules all filter on. Without
+// it the OTLP→Prometheus translation only maps service.name to the `job`
+// label, and every `service_name="aegis-greeter"` query matches nothing.
 otelcol.exporter.prometheus "app" {
-  forward_to = [prometheus.relabel.add_labels.receiver]
+  resource_to_telemetry_conversion = true
+  forward_to                       = [prometheus.relabel.add_labels.receiver]
 }
 
 // OTel traces → Tempo via OTLP.
