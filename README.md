@@ -19,37 +19,37 @@ together.
 | Read the reasoning behind a decision | [`docs/adr/README.md`](docs/adr/README.md) — ADR index with a reading order per audience |
 | Stand it up from scratch | [First-time setup](#first-time-setup) below |
 | Operate it day-to-day | [Day-to-day operations](#day-to-day-operations) below |
+| See what's monitored and alerted on | [`docs/metrics-and-alerts.md`](docs/metrics-and-alerts.md) — panel + alert catalog |
 | Run / understand the DR drill | [`docs/dr-plan.md`](docs/dr-plan.md) + [DR drill](#dr-drill) below |
 | See what was deliberately deferred | [`docs/tradeoffs.md`](docs/tradeoffs.md) |
 
 ## Architecture
 
-```
-  ┌─────────────────────┐         ┌──────────────────────────────────────┐
-  │  aegis-greeter       │         │  aegis-stateless  (this repo)        │
-  │  (application repo)  │         │                                      │
-  │                      │  push   │  terraform/   k8s/   .github/        │
-  │  greeter.go          │── ECR ─▶│   envs/        base/   workflows/    │
-  │  Dockerfile          │         │   modules/     overlays/prod/        │
-  │  .github/publish.yml │  commit │                                      │
-  │                      │── bump ▶│  k8s/overlays/prod/kustomization.yaml│
-  └─────────────────────┘  image    │            │                        │
-                            tag      │            ▼                        │
-                                     │     ArgoCD (per cluster)            │
-                                     │            │                        │
-  ┌──────────────────────────────────┼────────────▼───────────────────────┐
-  │  AWS  (per region, via Pattern X) │      EKS cluster                    │
-  │                                   │   ┌──────────────────────────────┐ │
-  │  VPC (3 AZ) ─ EKS ─ ALB           │   │ greeter Deployment (2+ pods) │ │
-  │  IRSA ─ ECR ─ Route 53            │   │ Grafana Alloy DaemonSet      │ │
-  │                                   │   └──────────────┬───────────────┘ │
-  └───────────────────────────────────┼──────────────────┼─────────────────┘
-                                       │                  │ OTLP / logs /
-                                       │                  │ profiles / scrape
-                                       ▼                  ▼
-                              CloudWatch (audit       Grafana Cloud
-                              side-effect only)       (Mimir/Loki/Tempo/
-                                                       Pyroscope)
+```mermaid
+flowchart TB
+    subgraph app_repo["aegis-greeter — application repo"]
+        app["greeter.go · Dockerfile · publish.yml"]
+    end
+    subgraph this_repo["aegis-stateless — this repo"]
+        tf["terraform/ · bootstrap / platform / regional"]
+        kust["k8s/overlays/prod/kustomization.yaml"]
+        argocd["ArgoCD · per cluster"]
+    end
+    subgraph aws["AWS · per region (Pattern X)"]
+        eks["EKS — greeter Deployment + Grafana Alloy DaemonSet"]
+        ecr[("ECR")]
+        cw["CloudWatch · audit side-effect"]
+    end
+    gc["Grafana Cloud · Mimir / Loki / Tempo / Pyroscope"]
+
+    app -->|build + push image| ecr
+    app -->|commit image-tag bump| kust
+    tf -->|provisions| eks
+    kust --> argocd
+    argocd -->|syncs| eks
+    ecr -.image.-> eks
+    eks -->|OTLP · logs · profiles · scrape| gc
+    eks -.control plane + ALB logs.-> cw
 ```
 
 - **Terraform**, three lifecycle-separated environments: `bootstrap` (state
@@ -224,7 +224,8 @@ The app emits metrics, traces, logs, and continuous profiles via OpenTelemetry +
 Pyroscope to a node-local Grafana Alloy DaemonSet, which forwards to Grafana
 Cloud. Dashboards and alert rules are declared in Terraform
 (`terraform/envs/platform/grafana.tf` + `grafana/dashboards/`) — no manual UI
-edits, so the DR drill reconstructs them from git.
+edits, so the DR drill reconstructs them from git. The full panel and alert
+inventory is in [`docs/metrics-and-alerts.md`](docs/metrics-and-alerts.md).
 
 Sample queries (full set in `docs/runbooks/`):
 
