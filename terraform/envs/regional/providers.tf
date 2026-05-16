@@ -8,7 +8,7 @@
 #
 # Background: provider for_each is reserved-but-not-implemented in
 # Terraform 1.16-alpha (verified 2026-05-15). External orchestration is
-# the cleaner alternative — see backlog.md Decision log + AS-0020 amended.
+# the cleaner alternative — see backlog.md Decision log + ADR-01.
 
 provider "aws" {
   region = var.region

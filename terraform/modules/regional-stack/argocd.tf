@@ -3,7 +3,7 @@
 #
 # Repo authentication: dedicated ED25519 deploy key, registered as read-only
 # on the aegis-stateless repo. One key per region (title disambiguated by
-# region). Per ADR AS-0025 — never use a personal PAT for ArgoCD repo auth.
+# region). Per ADR-06 — never use a personal PAT for ArgoCD repo auth.
 
 resource "kubernetes_namespace" "argocd" {
   metadata {

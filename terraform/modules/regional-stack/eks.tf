@@ -9,7 +9,7 @@ module "eks" {
   enable_irsa                    = true
 
   # All 5 control-plane log types → CloudWatch (audit / forensics
-  # side-effect; never dashboarded). Per AS-0028 (revised) — CW retained
+  # side-effect; never dashboarded). Per ADR-04 — CW retained
   # for audit only.
   cluster_enabled_log_types = [
     "api",

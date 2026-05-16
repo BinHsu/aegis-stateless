@@ -59,7 +59,7 @@ locals {
   active_regions = { for r, v in var.regions : r => v if v.enabled }
 
   # ECR replicates outward from var.platform_region to every OTHER active
-  # region. Per ADR `AS-0024`: ECR rejects an apply where a destination
+  # region. Per ADR-01: ECR rejects an apply where a destination
   # equals the source region — the filter is mandatory.
   ecr_replication_destinations = [
     for r in keys(local.active_regions) : r if r != var.platform_region

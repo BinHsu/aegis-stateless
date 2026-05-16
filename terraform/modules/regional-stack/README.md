@@ -12,7 +12,7 @@ Invoked from `terraform/envs/regional/main.tf` via `module "stack" { for_each = 
 | `variables.tf` | All inputs (region, vpc_cidr, node sizing, ECR/zone refs, GC creds, repo refs, tags). |
 | `locals.tf` | Derived names (`aegis-<region>` cluster), subnet CIDR carving via `cidrsubnet`. |
 | `vpc.tf` | `terraform-aws-modules/vpc/aws` ~> 5.13. 3 AZs, public + private, single NAT (FinOps tradeoff). EKS/ELB subnet tags applied. |
-| `eks.tf` | `terraform-aws-modules/eks/aws` ~> 20.24. K8s 1.30, managed node group on Spot, all 5 control-plane log types → CW (audit side-effect per AS-0028 revised). |
+| `eks.tf` | `terraform-aws-modules/eks/aws` ~> 20.24. K8s 1.30, managed node group on Spot, all 5 control-plane log types → CW (audit side-effect per ADR-04). |
 | `irsa-alb.tf` | IRSA role for ALB controller (via the iam-role-for-service-accounts-eks submodule's built-in `attach_load_balancer_controller_policy`). |
 | `alb-controller.tf` | `aws-load-balancer-controller` Helm chart 1.8.1, SA annotated with the IRSA role. |
 | `argocd.tf` | Per-cluster ArgoCD (chart 7.6.12). ED25519 deploy key registered on the aegis-stateless repo (read-only, per-region title). K8s Secret labeled `argocd.argoproj.io/secret-type=repository` so ArgoCD auto-discovers. Application CR via `argocd-apps` subchart 2.0.2 pointing at `k8s/overlays/prod`. |
@@ -34,4 +34,4 @@ For now the Route 53 hosted zone exists (in `platform/`), demonstrating the late
 
 `make destroy-regional` destroys this module's instances (VPC, EKS, ALB controller, ArgoCD, Alloy) per region. `platform/` survives (Route 53 zone, ECR repo, Grafana dashboards, SSM creds, ALB-logs S3 bucket).
 
-`make regional` rebuilds: EKS cold provisioning ~15 min + node group + addons ~5 min + ALB readiness ~1-3 min + ArgoCD sync ~30 s = 20-30 min real-world cycle (per AS-0026).
+`make regional` rebuilds: EKS cold provisioning ~15 min + node group + addons ~5 min + ALB readiness ~1-3 min + ArgoCD sync ~30 s = 20-30 min real-world cycle (per ADR-05).

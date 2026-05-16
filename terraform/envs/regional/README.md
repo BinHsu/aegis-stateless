@@ -2,7 +2,7 @@
 
 Per-region workload infrastructure: VPC + EKS + IRSA + ALB controller + per-cluster ArgoCD + Grafana Alloy DaemonSet. **Applied once per region by an external loop** (Makefile or GH Actions matrix), not as a single multi-region apply.
 
-This design avoids the TF `provider for_each` limitation (reserved-but-not-implemented as of TF 1.16-alpha, verified 2026-05-15) and trades a single-state-for-N-regions blast radius for per-region state isolation — adding canary, parallel apply, and granular DR drill as side-effects. See `AS-0020 (amended)` + `AS-0021 (amended)`.
+This design avoids the TF `provider for_each` limitation (reserved-but-not-implemented as of TF 1.16-alpha, verified 2026-05-15) and trades a single-state-for-N-regions blast radius for per-region state isolation — adding canary, parallel apply, and granular DR drill as side-effects. See ADR-01.
 
 ## Pattern X data flow
 
@@ -66,7 +66,7 @@ make destroy-region REGION=eu-central-1
 
 # rebuild
 make regional REGION=eu-central-1
-# 20-30 min EKS cold-provisioning cycle (AS-0026)
+# 20-30 min EKS cold-provisioning cycle (ADR-05)
 
 # … observe GC dashboard: metrics return
 ```

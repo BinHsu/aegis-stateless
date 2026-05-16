@@ -216,7 +216,7 @@ exposes `destroy-region` as an operator-triggered, audit-logged operation.
 
 Measured cycle: EKS control plane ~15 min + node group & addons ~5 min + ALB
 target health & DNS ~1-3 min + ArgoCD sync ~30 s. See
-[ADR 0026](docs/adr/0026-dr-drill-rto.md).
+[ADR-05](docs/adr/05-disaster-recovery.md).
 
 ## Observability
 

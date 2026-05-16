@@ -17,7 +17,7 @@ design, and is outside the drill's blast radius.
 | | Target | Notes |
 |---|---|---|
 | **RPO** | **~0 — not applicable** | The greeter is **stateless by design**. It holds no persistent data; there is nothing to lose and nothing to restore. RPO — the metric a stateful system fights for — is trivially satisfied here, and that is the point of the stateless architecture. |
-| **RTO** (region rebuild) | **20–30 min** | Full single-region teardown → IaC re-apply → workload reconverged. Measured, not aspirational — breakdown below and [ADR 0026](adr/0026-dr-drill-rto.md). |
+| **RTO** (region rebuild) | **20–30 min** | Full single-region teardown → IaC re-apply → workload reconverged. Measured, not aspirational — breakdown below and [ADR-05](adr/05-disaster-recovery.md). |
 | **SLI** | request success rate, request latency p95 | Emitted by the app over OpenTelemetry; the dashboard's RED panels. |
 | **SLO** (posture) | 5xx rate < 5%, p95 latency < 1 s | The alert-rule thresholds in `platform/grafana.tf` are the SLO line — breaching them pages. |
 | **SLA** | none committed | A take-home reference build, not a contracted service. The architecture's posture supports an SLA conversation; no number is promised. |
@@ -75,7 +75,7 @@ EKS control-plane provisioning ~15 min · managed node group + addons (CNI,
 CoreDNS, kube-proxy) ~5 min · ALB target health + DNS propagation ~1–3 min ·
 ArgoCD sync ~30 s. The 20–30 min total is dominated by EKS cold-provisioning —
 a fixed AWS cost, not something this repo can optimise. See
-[ADR 0026](adr/0026-dr-drill-rto.md).
+[ADR-05](adr/05-disaster-recovery.md).
 
 ## Validation — evidence
 

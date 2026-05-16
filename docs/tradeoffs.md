@@ -15,7 +15,7 @@ cost-bounded take-home, not pretended to be production-complete.
 ### Single region deployed
 
 `regions.auto.tfvars.json` enables one region (`eu-central-1`). The architecture
-is multi-region-*ready* — Pattern X (ADR `AS-0020`) makes adding a region a
+is multi-region-*ready* — Pattern X (ADR-01) makes adding a region a
 one-line data change — but only one is applied.
 
 - **Honest failure mode**: a region-wide outage is a service outage. There is no
@@ -212,7 +212,7 @@ Tracing earns its keep once the app gains downstream dependencies.
 
 ## Delivery pipeline
 
-CI-driven apply is already in place (ADR `AS-0019`): `infra-apply` runs
+CI-driven apply is already in place (ADR-03): `infra-apply` runs
 `terraform apply` on push to `main`, gated by PR + branch protection. What a
 larger setup would add:
 
