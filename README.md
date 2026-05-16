@@ -10,6 +10,18 @@ lives in the sibling repo `aegis-greeter`. This repo owns the AWS infrastructure
 the Kubernetes manifests, the ArgoCD installation, and the CI/CD that ties them
 together.
 
+## Who is this for
+
+| You want to… | Start here |
+|---|---|
+| Review the submission | [`docs/SUBMISSION.md`](docs/SUBMISSION.md) — what this is, status, service-level targets |
+| Understand the architecture | [Architecture](#architecture) below, then [`docs/adr/`](docs/adr/README.md) |
+| Read the reasoning behind a decision | [`docs/adr/README.md`](docs/adr/README.md) — ADR index with a reading order per audience |
+| Stand it up from scratch | [First-time setup](#first-time-setup) below |
+| Operate it day-to-day | [Day-to-day operations](#day-to-day-operations) below |
+| Run / understand the DR drill | [`docs/dr-plan.md`](docs/dr-plan.md) + [DR drill](#dr-drill) below |
+| See what was deliberately deferred | [`docs/tradeoffs.md`](docs/tradeoffs.md) |
+
 ## Architecture
 
 ```
@@ -82,7 +94,9 @@ scripts/install-tools.sh   Pinned project-local toolchain → ./bin/
 - An AWS account with permission to create VPC / EKS / IAM / ECR / Route 53 / S3.
 - A Grafana Cloud stack (free tier is sufficient).
 - `terraform` ≥ 1.11 (`.terraform-version` pins 1.14.8 for `tfenv`/`tenv`).
-- `make`, `git`, `aws` CLI, `bash`. All other tools install into `./bin/`.
+- `make`, `git`, `bash`, `aws` CLI, `kubectl`, `gh` (GitHub CLI — used to set
+  the Actions secrets/variables during setup). All other tools (tflint, tfsec,
+  kubeconform, jq, kustomize, gitleaks) install into `./bin/` via `make dev-setup`.
 
 ## First-time setup
 
@@ -114,9 +128,11 @@ make regional
 After `make platform`, capture its outputs and finish the CI wiring:
 
 ```bash
-# GitHub Actions secrets (12) — see terraform/envs/platform/README.md for the
-# full gh secret set commands.
-# GitHub Actions repo variables for the sibling app repo:
+# GitHub Actions secrets — the authoritative list and the full `gh secret set`
+# commands live in terraform/envs/platform/README.md (each value is piped from
+# `terraform output`, so nothing is typed by hand).
+
+# GitHub Actions repo variables for the sibling app repo, from platform outputs:
 gh variable set ECR_REPO_URL  -b "$(terraform -chdir=terraform/envs/platform output -raw ecr_repository_url)"  --repo BinHsu/aegis-greeter
 gh variable set ECR_REGISTRY  -b "$(terraform -chdir=terraform/envs/platform output -raw ecr_registry)"        --repo BinHsu/aegis-greeter
 gh variable set OIDC_ROLE_ARN -b "$(terraform -chdir=terraform/envs/platform output -raw greeter_ci_role_arn)" --repo BinHsu/aegis-greeter
@@ -124,6 +140,28 @@ gh variable set AWS_REGION    -b "$(terraform -chdir=terraform/envs/platform out
 
 # Flip the CI bootstrap gate — infra-plan/infra-apply plan/apply jobs un-skip.
 gh variable set BOOTSTRAP_COMPLETE -b "true" --repo BinHsu/aegis-stateless
+```
+
+### Publish the first application image — cross-repo step
+
+`make regional` brings up the cluster and ArgoCD, but the greeter Deployment
+references an image that does not exist yet — its pods sit in
+`ImagePullBackOff` until the **sibling `aegis-greeter` repo** publishes one.
+That repo's `publish.yml` builds the image, pushes it to the ECR repository
+provisioned here, and commits the image-tag bump back to
+`k8s/overlays/prod/kustomization.yaml`. Trigger it by pushing to `aegis-greeter`'s
+`main` (it needs the four repo variables set above). ArgoCD then reconciles the
+new tag and the greeter pods reach `Running`.
+
+### Verify
+
+```bash
+aws eks update-kubeconfig --name aegis-stateless-eu-central-1 --region eu-central-1
+kubectl get pods -n greeter       # greeter pods 1/1 Running (not ImagePullBackOff)
+kubectl get pods -n argocd        # ArgoCD healthy
+kubectl get pods -n monitoring    # Alloy + node-exporter + kube-state-metrics
+kubectl -n greeter port-forward svc/aegis-greeter 8080:80 &
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/healthz   # 200
 ```
 
 From here, every push to `main` runs `infra-plan` (PR) / `infra-apply`
@@ -147,8 +185,19 @@ The pre-commit hook (`.githooks/pre-commit`, wired by `make dev-setup`) runs
 
 ## DR drill
 
-The drill demonstrates that the workload is reconstructible from git — Terraform
-state is the source of truth, ArgoCD converges the cluster from zero.
+The drill proves the workload is reconstructible from git — Terraform state is
+the source of truth, ArgoCD converges the cluster from zero. The failure-mode
+matrix, RTO/RPO targets, and the full procedure are in
+[`docs/dr-plan.md`](docs/dr-plan.md).
+
+Run it with the helper script — it sequences the phases, times each, captures
+CLI evidence, and writes a timestamped report under `docs/evidence/`:
+
+```bash
+scripts/dr/dr-drill.sh eu-central-1
+```
+
+Or step through it manually:
 
 ```bash
 # Tear down one region's workload. The platform env (Route 53, ECR, Grafana
@@ -157,13 +206,17 @@ make destroy-region REGION=eu-central-1
 
 # Rebuild it. EKS cold-provisioning dominates the ~20-30 min cycle.
 make regional-one REGION=eu-central-1
+
+# Verify the workload reconverged from git.
+kubectl get pods -n greeter
 ```
 
 Or run it through GitHub Actions: the `infra-ops` workflow (`workflow_dispatch`)
 exposes `destroy-region` as an operator-triggered, audit-logged operation.
 
 Measured cycle: EKS control plane ~15 min + node group & addons ~5 min + ALB
-target health & DNS ~1-3 min + ArgoCD sync ~30 s. See ADR `AS-0026`.
+target health & DNS ~1-3 min + ArgoCD sync ~30 s. See
+[ADR 0026](docs/adr/0026-dr-drill-rto.md).
 
 ## Observability
 
