@@ -209,6 +209,32 @@ happens after the Terraform apply.
 - **Trigger**: a real domain + production traffic.
 - **Effort**: ~0.5 day.
 
+## Container image registry
+
+The greeter image lives in one ECR repository in the platform region. With
+more than one region active, ECR replication mirrors it to each region's
+registry — but the workload still pulls from the platform region:
+`k8s/overlays/prod/kustomization.yaml` pins one registry, so a second
+region's pods pull the image cross-region.
+
+- **Cost**: cross-region image transfer (~$0.02/GB) on each pull not served
+  from a node's cache. Sub-cent for a small distroless image at this scale;
+  a recurring line item at fleet scale.
+- **Why not fixed here**: a per-region registry with an *automated* CI tag
+  bump needs the registry and the tag to be independent parameters.
+  Kustomize couples them in one `images:` entry, and ArgoCD's
+  `kustomize.images` override replaces the whole entry — pinning the tag
+  there would freeze out the CI bump and break GitOps auto-sync.
+- **Production**: (a) node-level containerd registry mirrors — each
+  region's nodes redirect a region-agnostic image reference to the local
+  ECR, manifest untouched; or (b) package the greeter as a Helm chart,
+  where `image.registry` and `image.tag` are separate values that compose.
+  A globally distributed registry (ghcr.io, a CDN-fronted Harbor) sidesteps
+  the problem entirely.
+- **Trigger**: multi-region traffic where cross-region pull cost or latency
+  is material.
+- **Effort**: ~0.5 day (containerd mirror) / ~1 day (Helm migration).
+
 ---
 
 ## Observability upgrade aspirations

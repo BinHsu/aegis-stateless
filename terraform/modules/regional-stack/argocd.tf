@@ -104,6 +104,54 @@ resource "helm_release" "argocd_application" {
             repoURL        = var.repo_url_ssh
             path           = "k8s/overlays/prod"
             targetRevision = "HEAD"
+
+            # Per-region overrides applied by THIS cluster's ArgoCD at
+            # render time — keeps k8s/overlays/prod region-agnostic.
+            # (Region-aware ECR registry is deliberately NOT done here —
+            # see docs/tradeoffs.md "Container image registry".)
+            kustomize = {
+              patches = [
+                # HELLO_TAG = region: the greeting's "unique tag" then
+                # identifies which region served the request.
+                {
+                  target = { kind = "Deployment", name = "aegis-greeter" }
+                  patch = yamlencode({
+                    apiVersion = "apps/v1"
+                    kind       = "Deployment"
+                    metadata   = { name = "aegis-greeter" }
+                    spec = {
+                      template = {
+                        spec = {
+                          containers = [{
+                            name = "greeter"
+                            env  = [{ name = "HELLO_TAG", value = var.region }]
+                          }]
+                        }
+                      }
+                    }
+                  })
+                },
+                # external-dns latency routing: set-identifier + aws-region
+                # make this region's record one latency-routed member of
+                # the shared greeter.<zone> name; evaluate-target-health
+                # drops the record when the ALB is gone (region failover).
+                {
+                  target = { kind = "Ingress", name = "aegis-greeter" }
+                  patch = yamlencode({
+                    apiVersion = "networking.k8s.io/v1"
+                    kind       = "Ingress"
+                    metadata = {
+                      name = "aegis-greeter"
+                      annotations = {
+                        "external-dns.alpha.kubernetes.io/set-identifier"             = var.region
+                        "external-dns.alpha.kubernetes.io/aws-region"                 = var.region
+                        "external-dns.alpha.kubernetes.io/aws-evaluate-target-health" = "true"
+                      }
+                    }
+                  })
+                },
+              ]
+            }
           }
           destination = {
             server    = "https://kubernetes.default.svc"
