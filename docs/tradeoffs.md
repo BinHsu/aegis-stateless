@@ -184,20 +184,21 @@ The Route 53 hosted zone (`aegis-stateless.test`) is a placeholder — no real
 domain is registered. `.test` is an RFC 6761 special-use TLD: reserved for
 testing and guaranteed never to be delegated on the public internet, so the
 zone cannot collide with a real domain. (`example.com` would seem the obvious
-placeholder but AWS Route 53 explicitly rejects it as reserved.) The
-latency-routing structure is demonstrable via `dig @<assigned-nameserver>`
-without registering a domain.
+placeholder but AWS Route 53 explicitly rejects it as reserved.)
 
-Route 53 **records** pointing at each ALB are not yet created: the ALB DNS name
-is only known after the ALB controller provisions it from the Ingress, which
-happens after the Terraform apply.
+external-dns *is* deployed (ADR-05) — it watches the greeter Ingress and
+reconciles the per-region Route 53 latency records; the records resolve and
+fail over, evidenced in [`evidence/dns-failover.md`](evidence/dns-failover.md).
+What is deferred is only the **real domain**: against a `.test` zone,
+resolution works only by querying the zone's nameservers directly
+(`dig @<assigned-nameserver>`), because `.test` has no public delegation.
 
-- **Production**: install `external-dns` in `regional-stack` with an IRSA role
-  scoped to Route 53 write. It watches Ingresses and reconciles records
-  (`hostname` + `aws-routing-policy: latency` + `set-identifier: <region>`
-  annotations) — no Terraform involvement, no chicken-and-egg.
-- **Trigger**: a real domain + production traffic.
-- **Effort**: ~0.5 day.
+- **Production**: register a domain (or delegate a subdomain) and point its NS
+  records at the zone's AWS-assigned nameservers. `dig greeter.<domain>` then
+  resolves from any resolver — no `@<nameserver>` needed.
+- **Trigger**: a publicly reachable service.
+- **Effort**: ~0.5 day (domain registration + NS delegation; the hosted zone
+  and the latency records already exist).
 
 ## Container image registry
 
