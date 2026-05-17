@@ -79,7 +79,7 @@ resource "grafana_rule_group" "rec_greeter_http_requests" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=\"aegis-greeter\"}[5m]))"
+        expr       = "sum by (region, http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=\"aegis-greeter\"}[5m]))"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -113,7 +113,7 @@ resource "grafana_rule_group" "rec_greeter_http_request_duration" {
         editorMode = "code"
         # Bucket rate keeps the `le` label — consumers run histogram_quantile
         # on the recorded series for whatever percentile they need.
-        expr       = "sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"aegis-greeter\"}[5m]))"
+        expr       = "sum by (region, le) (rate(http_server_request_duration_seconds_bucket{service_name=\"aegis-greeter\"}[5m]))"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -145,7 +145,7 @@ resource "grafana_rule_group" "rec_apiserver_requests" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum by (code) (rate(apiserver_request_total[5m]))"
+        expr       = "sum by (region, code) (rate(apiserver_request_total[5m]))"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -188,7 +188,7 @@ resource "grafana_rule_group" "five_xx_rate" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum(job:greeter_http_requests:rate5m{http_response_status_code=~\"5..\"}) / clamp_min(sum(job:greeter_http_requests:rate5m), 1e-9)"
+        expr       = "sum by (region) (job:greeter_http_requests:rate5m{http_response_status_code=~\"5..\"}) / clamp_min(sum by (region) (job:greeter_http_requests:rate5m), 1e-9)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -220,7 +220,7 @@ resource "grafana_rule_group" "five_xx_rate" {
     # link from the alert. The query stays a separate copy — the link makes
     # any drift between alert and panel visible at a click.
     annotations = {
-      summary          = "aegis-greeter 5xx rate exceeded 5% over 5 min"
+      summary          = "aegis-greeter 5xx rate exceeded 5% over 5 min in {{ $labels.region }}"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "2"
     }
@@ -279,7 +279,7 @@ resource "grafana_rule_group" "p95_latency" {
     }
 
     annotations = {
-      summary          = "aegis-greeter p95 request latency exceeded 1 s over 5 min"
+      summary          = "aegis-greeter p95 request latency exceeded 1 s over 5 min in {{ $labels.region }}"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "3"
     }
@@ -310,7 +310,7 @@ resource "grafana_rule_group" "pod_ready" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum(kube_deployment_status_replicas_ready{deployment=\"aegis-greeter\"})"
+        expr       = "sum by (region) (kube_deployment_status_replicas_ready{deployment=\"aegis-greeter\"})"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -338,7 +338,7 @@ resource "grafana_rule_group" "pod_ready" {
     }
 
     annotations = {
-      summary          = "aegis-greeter Deployment has 0 ready pods"
+      summary          = "aegis-greeter Deployment has 0 ready pods in {{ $labels.region }}"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "6"
     }
@@ -369,7 +369,7 @@ resource "grafana_rule_group" "memory_near_limit" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "max(container_memory_working_set_bytes{pod=~\"aegis-greeter.*\"}) / max(kube_pod_container_resource_limits{pod=~\"aegis-greeter.*\",resource=\"memory\"})"
+        expr       = "max by (region) (container_memory_working_set_bytes{pod=~\"aegis-greeter.*\"}) / max by (region) (kube_pod_container_resource_limits{pod=~\"aegis-greeter.*\",resource=\"memory\"})"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -397,7 +397,7 @@ resource "grafana_rule_group" "memory_near_limit" {
     }
 
     annotations = {
-      summary          = "aegis-greeter container memory exceeded 90% of limit over 5 min — OOMKill imminent"
+      summary          = "aegis-greeter container memory exceeded 90% of limit over 5 min in {{ $labels.region }} — OOMKill imminent"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "7"
     }
@@ -428,7 +428,7 @@ resource "grafana_rule_group" "node_memory_pressure" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "max(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
+        expr       = "max by (region) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -456,7 +456,7 @@ resource "grafana_rule_group" "node_memory_pressure" {
     }
 
     annotations = {
-      summary          = "an aegis-stateless node exceeded 85% memory utilization over 5 min"
+      summary          = "an aegis-stateless node in {{ $labels.region }} exceeded 85% memory utilization over 5 min"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "9"
     }
@@ -487,7 +487,7 @@ resource "grafana_rule_group" "apiserver_error_rate" {
       }
       model = jsonencode({
         editorMode = "code"
-        expr       = "sum(cluster:apiserver_requests:rate5m{code=~\"5..\"}) / clamp_min(sum(cluster:apiserver_requests:rate5m), 1e-9)"
+        expr       = "sum by (region) (cluster:apiserver_requests:rate5m{code=~\"5..\"}) / clamp_min(sum by (region) (cluster:apiserver_requests:rate5m), 1e-9)"
         intervalMs = 1000
         instant    = true
         refId      = "A"
@@ -515,7 +515,7 @@ resource "grafana_rule_group" "apiserver_error_rate" {
     }
 
     annotations = {
-      summary          = "EKS apiserver 5xx rate exceeded 5% over 5 min — control-plane degradation"
+      summary          = "EKS apiserver 5xx rate exceeded 5% over 5 min in {{ $labels.region }} — control-plane degradation"
       __dashboardUid__ = grafana_dashboard.greeter_overview.uid
       __panelId__      = "11"
     }

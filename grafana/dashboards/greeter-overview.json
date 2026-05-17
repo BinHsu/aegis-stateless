@@ -2,11 +2,28 @@
   "title": "aegis-greeter — overview",
   "uid": "aegis-greeter-overview",
   "schemaVersion": 38,
-  "version": 4,
+  "version": 5,
   "tags": ["aegis-stateless", "managed-by-terraform"],
   "time": { "from": "now-6h", "to": "now" },
   "refresh": "30s",
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "region",
+        "label": "Region",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
+        "definition": "label_values(region)",
+        "query": { "query": "label_values(region)", "refId": "StandardVariableQuery" },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
   "annotations": { "list": [] },
   "panels": [
     {
@@ -22,8 +39,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum by (http_route) (job:greeter_http_requests:rate5m)",
-          "legendFormat": "{{http_route}}"
+          "expr": "sum by (region, http_route) (job:greeter_http_requests:rate5m{region=~\"$region\"})",
+          "legendFormat": "{{region}} · {{http_route}}"
         }
       ]
     },
@@ -40,8 +57,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum(job:greeter_http_requests:rate5m{http_response_status_code=~\"5..\"}) / clamp_min(sum(job:greeter_http_requests:rate5m), 1e-9)",
-          "legendFormat": "5xx rate"
+          "expr": "sum by (region) (job:greeter_http_requests:rate5m{http_response_status_code=~\"5..\",region=~\"$region\"}) / clamp_min(sum by (region) (job:greeter_http_requests:rate5m{region=~\"$region\"}), 1e-9)",
+          "legendFormat": "{{region}}"
         }
       ]
     },
@@ -58,14 +75,14 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "histogram_quantile(0.95, job:greeter_http_request_duration:rate5m)",
-          "legendFormat": "p95"
+          "expr": "histogram_quantile(0.95, job:greeter_http_request_duration:rate5m{region=~\"$region\"})",
+          "legendFormat": "{{region}} · p95"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "histogram_quantile(0.99, job:greeter_http_request_duration:rate5m)",
-          "legendFormat": "p99"
+          "expr": "histogram_quantile(0.99, job:greeter_http_request_duration:rate5m{region=~\"$region\"})",
+          "legendFormat": "{{region}} · p99"
         }
       ]
     },
@@ -82,8 +99,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum(http_server_active_requests{service_name=\"aegis-greeter\"})",
-          "legendFormat": "in-flight"
+          "expr": "sum by (region) (http_server_active_requests{service_name=\"aegis-greeter\",region=~\"$region\"})",
+          "legendFormat": "{{region}}"
         }
       ]
     },
@@ -111,14 +128,14 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum(kube_deployment_status_replicas_ready{deployment=\"aegis-greeter\"})",
-          "legendFormat": "ready"
+          "expr": "sum by (region) (kube_deployment_status_replicas_ready{deployment=\"aegis-greeter\",region=~\"$region\"})",
+          "legendFormat": "{{region}} ready"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum(kube_deployment_spec_replicas{deployment=\"aegis-greeter\"})",
-          "legendFormat": "desired"
+          "expr": "sum by (region) (kube_deployment_spec_replicas{deployment=\"aegis-greeter\",region=~\"$region\"})",
+          "legendFormat": "{{region}} desired"
         }
       ]
     },
@@ -148,8 +165,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "max(container_memory_working_set_bytes{pod=~\"aegis-greeter.*\"}) / max(kube_pod_container_resource_limits{pod=~\"aegis-greeter.*\",resource=\"memory\"})",
-          "legendFormat": "mem / limit"
+          "expr": "max by (region) (container_memory_working_set_bytes{pod=~\"aegis-greeter.*\",region=~\"$region\"}) / max by (region) (kube_pod_container_resource_limits{pod=~\"aegis-greeter.*\",resource=\"memory\",region=~\"$region\"})",
+          "legendFormat": "{{region}}"
         }
       ]
     },
@@ -166,8 +183,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
-          "legendFormat": "{{instance}}"
+          "expr": "1 - avg by (region, instance) (rate(node_cpu_seconds_total{mode=\"idle\",region=~\"$region\"}[5m]))",
+          "legendFormat": "{{region}} · {{instance}}"
         }
       ]
     },
@@ -197,8 +214,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
-          "legendFormat": "{{instance}}"
+          "expr": "1 - node_memory_MemAvailable_bytes{region=~\"$region\"} / node_memory_MemTotal_bytes{region=~\"$region\"}",
+          "legendFormat": "{{region}} · {{instance}}"
         }
       ]
     },
@@ -215,8 +232,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "cluster:apiserver_requests:rate5m",
-          "legendFormat": "{{code}}"
+          "expr": "cluster:apiserver_requests:rate5m{region=~\"$region\"}",
+          "legendFormat": "{{region}} · {{code}}"
         }
       ]
     },
@@ -245,8 +262,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum(cluster:apiserver_requests:rate5m{code=~\"5..\"}) / clamp_min(sum(cluster:apiserver_requests:rate5m), 1e-9)",
-          "legendFormat": "5xx rate"
+          "expr": "sum by (region) (cluster:apiserver_requests:rate5m{code=~\"5..\",region=~\"$region\"}) / clamp_min(sum by (region) (cluster:apiserver_requests:rate5m{region=~\"$region\"}), 1e-9)",
+          "legendFormat": "{{region}}"
         }
       ]
     },
@@ -263,8 +280,8 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${prometheus_uid}" },
-          "expr": "sum by (personalized) (rate(greeter_responses_total[5m]))",
-          "legendFormat": "personalized={{personalized}}"
+          "expr": "sum by (region, personalized) (rate(greeter_responses_total{region=~\"$region\"}[5m]))",
+          "legendFormat": "{{region}} · personalized={{personalized}}"
         }
       ]
     }
