@@ -40,6 +40,11 @@ vendor/
 crash.log
 crash.*.log
 
+# DR drill — the raw Terraform CLI log carries account-specific ARNs / IDs, so
+# it is kept operator-local. The curated DR_REPORT.md and the failover-probe
+# log (timestamps + HTTP codes only) ARE committed as evidence.
+docs/evidence/dr-drill-*.log
+
 # AWS / secrets
 .env
 .env.*

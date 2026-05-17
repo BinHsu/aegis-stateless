@@ -27,6 +27,11 @@ export PATH
 AWS_PROFILE ?= aegis
 export AWS_PROFILE
 
+# Non-interactive apply/destroy. Empty by default so `make` prompts for
+# confirmation (operator safety). The DR drill sets AUTO_APPROVE=-auto-approve
+# to run unattended; CI runs terraform directly, not via these targets.
+AUTO_APPROVE ?=
+
 TF_BOOTSTRAP := terraform/envs/bootstrap
 TF_PLATFORM  := terraform/envs/platform
 TF_REGIONAL  := terraform/envs/regional
@@ -146,7 +151,7 @@ regional-one: $(BACKEND_HCL)
 	  TF_VAR_node_instance=$$node_instance \
 	  TF_VAR_node_min=$$node_min \
 	  TF_VAR_node_max=$$node_max \
-	  terraform apply
+	  terraform apply $(AUTO_APPROVE)
 
 all: bootstrap platform regional
 
@@ -179,7 +184,7 @@ destroy-region: $(BACKEND_HCL)
 	  TF_VAR_node_instance=$$node_instance \
 	  TF_VAR_node_min=$$node_min \
 	  TF_VAR_node_max=$$node_max \
-	  terraform destroy
+	  terraform destroy $(AUTO_APPROVE)
 
 # Full teardown of platform (post-submission cleanup). bootstrap's bucket
 # + lock table have lifecycle prevent_destroy — operator must edit those
