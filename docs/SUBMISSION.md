@@ -46,7 +46,8 @@ Detail and the failure-mode matrix: [`dr-plan.md`](dr-plan.md).
 
 ## Delivery format
 
-A two-repo solution; the submission is two Git tags:
+A two-repo solution; the submission is two Git tags, each delivered as a zip
+archive (`git archive` of the tag, or the GitHub release zip):
 
 - **`aegis-stateless`** (this repo) — AWS infrastructure, Kubernetes manifests,
   ArgoCD, CI/CD, the DR drill.

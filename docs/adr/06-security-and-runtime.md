@@ -17,8 +17,10 @@ Terraform.
 **Identity — least-privilege, scoped per purpose.**
 
 - *Workloads* use IRSA (IAM Roles for Service Accounts) where they need AWS
-  APIs — the ALB controller assumes a role scoped to exactly its actions, not
-  the node's IAM role, so a pod cannot inherit node-wide permissions.
+  APIs — the ALB controller and external-dns each assume a role scoped to
+  exactly its own actions (load-balancer APIs; Route 53 record writes on the
+  one hosted zone), not the node's IAM role, so a pod cannot inherit node-wide
+  permissions.
 - *CI* uses GitHub OIDC, no static keys — two roles split trust (read-only for
   PR plans, apply pinned to `refs/heads/main`; see
   [ADR-03](03-delivery-cicd-gitops.md)).

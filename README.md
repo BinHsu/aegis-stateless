@@ -121,9 +121,8 @@ cp terraform/envs/regional/secrets.auto.tfvars.example terraform/envs/regional/s
 #        lifecycle platform layer live (ECR, OIDC, Route 53, budget, SSM).
 #        Set once; it is also the state-bucket region.
 #      regions{}       — which region(s) the workload (VPC + EKS + ArgoCD)
-#        deploys to. Ships with eu-central-1 `enabled: true` and a complete
-#        eu-west-1 entry `enabled: false` — a ready-to-deploy template; flip
-#        a region's `enabled` to true to add it.
+#        deploys to. eu-central-1 and eu-west-1 both ship `enabled: true`;
+#        flip a region's `enabled` flag to add or drop one.
 
 # 4. Create the remote state backend (local state, one-shot).
 export AWS_PROFILE=<your-profile>
@@ -232,7 +231,7 @@ Or step through it manually:
 # dashboards) is untouched; other regions, if any, stay alive.
 make destroy-region REGION=eu-central-1
 
-# Rebuild it. EKS cold-provisioning dominates the ~20-30 min cycle.
+# Rebuild it. EKS cold-provisioning dominates — the drill measured 11m 21s.
 make regional-one REGION=eu-central-1
 
 # Verify the workload reconverged from git.
@@ -242,9 +241,10 @@ kubectl get pods -n greeter
 Or run it through GitHub Actions: the `infra-ops` workflow (`workflow_dispatch`)
 exposes `destroy-region` as an operator-triggered, audit-logged operation.
 
-Measured cycle: EKS control plane ~15 min + node group & addons ~5 min + ALB
-target health & DNS ~1-3 min + ArgoCD sync ~30 s. See
-[ADR-05](docs/adr/05-disaster-recovery.md).
+Measured cold-rebuild RTO (2026-05-17 drill): **11m 21s** — Terraform re-apply
+11m 3s + ArgoCD reconverge 18 s, region-down to greeter pods Ready. ~20-30 min
+is the conservative budget; EKS control-plane provisioning is the variable
+bottleneck. See [ADR-05](docs/adr/05-disaster-recovery.md).
 
 ## Observability
 

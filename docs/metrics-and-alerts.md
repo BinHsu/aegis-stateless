@@ -10,6 +10,9 @@ Design rationale is [ADR-04](adr/04-observability.md); runnable queries are in
 
 ## Dashboard — `aegis-greeter — overview` (11 panels)
 
+A `region` template variable scopes the view; every panel query splits
+`by (region)`, so each region shows as its own series.
+
 | # | Panel | Shows | Source |
 |---|---|---|---|
 | 1 | Request rate | requests/s by route | recording rule `job:greeter_http_requests:rate5m` |
@@ -30,7 +33,10 @@ Panels 1, 4, 5, 8, 10 are context / diagnostic panels — deliberately alert-fre
 ## Alert rules (6)
 
 Each alert links to its panel via `__dashboardUid__` / `__panelId__`, so Grafana
-shows the alert state on the panel and offers a jump-to-panel link.
+shows the alert state on the panel and offers a jump-to-panel link. Every alert
+query groups `by (region)` — it fires per region, and the summary names the
+region (`{{ $labels.region }}`), so an operator reads the failing region off
+the page, not off a node IP.
 
 | Alert rule group | Fires when | For | Severity | Panel |
 |---|---|---|---|---|
@@ -51,9 +57,9 @@ definition instead of repeating the expression.
 
 | Recorded metric | Recorded from | Consumed by |
 |---|---|---|
-| `job:greeter_http_requests:rate5m` | `sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name="aegis-greeter"}[5m]))` | panels 1, 2; alert `five_xx_rate` |
-| `job:greeter_http_request_duration:rate5m` | `sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name="aegis-greeter"}[5m]))` | panel 3; alert `p95_latency` |
-| `cluster:apiserver_requests:rate5m` | `sum by (code) (rate(apiserver_request_total[5m]))` | panels 10, 11; alert `apiserver_error_rate` |
+| `job:greeter_http_requests:rate5m` | `sum by (region, http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name="aegis-greeter"}[5m]))` | panels 1, 2; alert `five_xx_rate` |
+| `job:greeter_http_request_duration:rate5m` | `sum by (region, le) (rate(http_server_request_duration_seconds_bucket{service_name="aegis-greeter"}[5m]))` | panel 3; alert `p95_latency` |
+| `cluster:apiserver_requests:rate5m` | `sum by (region, code) (rate(apiserver_request_total[5m]))` | panels 10, 11; alert `apiserver_error_rate` |
 
 ## SLI / SLO
 
