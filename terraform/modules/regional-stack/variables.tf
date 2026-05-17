@@ -24,11 +24,25 @@ variable "node_max" {
   type        = number
 }
 
-# NOTE: ecr_url / zone_id / zone_name / alb_logs_bucket / repo_url_https
-# are intentionally NOT module inputs — nothing in this module consumes
-# them. The greeter image reference is set in k8s/overlays/prod (kustomize),
-# Route 53 records are deferred to external-dns, and ArgoCD authenticates
-# via the SSH repo URL. Re-add here only when a consumer actually exists.
+# zone_id / zone_name ARE module inputs — external-dns (external-dns.tf)
+# consumes them: zone_id scopes its IRSA record-write policy, zone_name is
+# its domain filter.
+#
+# NOTE: ecr_url / alb_logs_bucket / repo_url_https remain intentionally
+# absent — nothing in this module consumes them. The greeter image
+# reference is set in k8s/overlays/prod (kustomize) + per-region by the
+# ArgoCD Application; ALB access logs are an operator-local overlay; ArgoCD
+# authenticates via the SSH repo URL. Re-add only when a consumer exists.
+
+variable "zone_id" {
+  description = "Route 53 hosted zone ID (from the platform env). Scopes external-dns's IRSA record-write policy to this one zone."
+  type        = string
+}
+
+variable "zone_name" {
+  description = "Route 53 hosted zone name (from the platform env). external-dns uses it as its domain filter."
+  type        = string
+}
 
 variable "repo_url_ssh" {
   description = "SSH URL of aegis-stateless (referenced by the ArgoCD repository Secret data.url)."
