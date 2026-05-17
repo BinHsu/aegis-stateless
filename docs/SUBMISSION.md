@@ -10,7 +10,7 @@ Deployed to real AWS EKS and verified end to end — Terraform across three
 environments, a live EKS cluster, ArgoCD reconciling the workload from git, and
 the full OpenTelemetry → Alloy → Grafana Cloud pipeline confirmed carrying app
 metrics, traces, logs, and profiles. The DR drill is scripted and its evidence
-lands in [`evidence/`](evidence/). The live environment is torn down after the
+lands in [`evidence/`](evidence/README.md). The live environment is torn down after the
 demo to bound cost — the proof is committed to git, not left running.
 
 ## Architecture

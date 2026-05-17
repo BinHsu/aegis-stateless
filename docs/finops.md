@@ -64,7 +64,7 @@ expensive.
 
 ## Cost scales linearly per region
 
-Adding a region (Pattern X — [ADR-01](adr/01-architecture-and-topology.md)) adds
+Adding a region (the multi-region-as-data approach — [ADR-01](adr/01-architecture-and-topology.md)) adds
 exactly one more `regional` stack: **+≈ $0.21/hr per region**. Two regions
 ≈ $0.42/hr. There is no shared regional infrastructure and no per-region
 fixed overhead beyond the stack itself, so the cost curve is a straight line in

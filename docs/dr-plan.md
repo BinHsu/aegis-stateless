@@ -2,7 +2,7 @@
 
 How `aegis-stateless` recovers from failure, what it targets, and how that is
 proven. This is the *plan*. The *evidence* from an actual drill run lands in
-[`evidence/`](evidence/).
+[`evidence/`](evidence/README.md).
 
 ## Scope
 
@@ -85,7 +85,7 @@ See [ADR-05](adr/05-disaster-recovery.md).
 ## Validation — evidence
 
 A drill run is a claim until it is evidenced. `dr-drill.sh` writes a report and
-a CLI log to [`evidence/`](evidence/). The operator pairs it with a Grafana
+a CLI log to [`evidence/`](evidence/README.md). The operator pairs it with a Grafana
 dashboard screenshot of the drill window.
 
 The screenshot must be **committed into git** — the live dashboard is not

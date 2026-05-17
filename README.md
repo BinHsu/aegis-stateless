@@ -36,7 +36,7 @@ flowchart TB
         kust["k8s/overlays/prod/kustomization.yaml"]
         argocd["ArgoCD · per cluster"]
     end
-    subgraph aws["AWS · per region (Pattern X)"]
+    subgraph aws["AWS · per region"]
         eks["EKS — greeter Deployment + Grafana Alloy DaemonSet"]
         ecr[("ECR")]
         cw["CloudWatch · audit side-effect"]
@@ -57,7 +57,7 @@ flowchart TB
   backend), `platform` (slow lifecycle — Route 53, ECR, OIDC, budgets, Grafana
   dashboards), `regional` (fast lifecycle — VPC + EKS + ArgoCD + Alloy, applied
   once per region).
-- **Pattern X** — the multi-region topology is data (`regions.auto.tfvars.json`),
+- **Multi-region topology as data** — the region set is data (`regions.auto.tfvars.json`),
   not code. Adding a region is a one-line data change; an external loop
   (Makefile / GitHub Actions matrix) applies `regional` once per region with
   per-region state isolation.
@@ -67,7 +67,7 @@ flowchart TB
   Grafana Alloy DaemonSet, which forwards to Grafana Cloud. CloudWatch is kept
   only for EKS control-plane logs + ALB access logs (audit side-effect).
 
-See [`docs/adr/`](docs/adr/) for the reasoning behind each decision and
+See [`docs/adr/`](docs/adr/README.md) for the reasoning behind each decision and
 [`docs/tradeoffs.md`](docs/tradeoffs.md) for what was deliberately deferred.
 
 ## Repository layout
@@ -205,7 +205,7 @@ Regional infrastructure is **ephemeral** — stood up for a demo or DR drill, to
 down when idle (`make destroy-region`). The `bootstrap`/`platform`/`regional`
 lifecycle split keeps this safe: a teardown never touches ECR images, the
 Route 53 zone, or Grafana dashboards. An AWS Budget ($10 warn / $25 hard)
-backstops a forgotten teardown. Cost scales linearly per region (Pattern X).
+backstops a forgotten teardown. Cost scales linearly per region.
 
 Full breakdown — itemised rates, the interval math, and the levers pulled — in
 [`docs/finops.md`](docs/finops.md).
