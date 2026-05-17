@@ -32,7 +32,8 @@ are independent (separate Terraform state, EKS cluster, ArgoCD), so
 losing one does not affect another. DNS-level failover — Route 53
 latency records with evaluate-target-health drop the drilled region's
 record when its ALB is gone — is verifiable from an operator machine
-with `dig @<zone-nameserver> greeter.aegis-stateless.test`.
+with `dig @<zone-nameserver> greeter.aegis-stateless.test`, and is evidenced in
+[`dns-failover.md`](dns-failover.md).
 
 ## Grafana evidence
 
