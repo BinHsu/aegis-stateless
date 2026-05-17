@@ -17,7 +17,7 @@ design, and is outside the drill's blast radius.
 | | Target | Notes |
 |---|---|---|
 | **RPO** | **~0 — not applicable** | The greeter is **stateless by design**. It holds no persistent data; there is nothing to lose and nothing to restore. RPO — the metric a stateful system fights for — is trivially satisfied here, and that is the point of the stateless architecture. |
-| **RTO — cold rebuild** (worst case) | **20–30 min** | Time to reconstruct a region from zero — Terraform state + git, no warm standby. Measured, not aspirational — breakdown below and [ADR-05](adr/05-disaster-recovery.md). This is the recovery path for the failures redundancy *cannot* cover (operator error; a bad change GitOps faithfully propagates). A *failover* RTO is a different, smaller number — see the matrix below. |
+| **RTO — cold rebuild** | **11m 21s measured** | Reconstruct a region from zero — Terraform state + git, no warm standby. Measured in the 2026-05-17 drill ([`evidence/DR_REPORT.md`](evidence/DR_REPORT.md)) to greeter pods Ready; ~20–30 min is the conservative planning budget (EKS control-plane provisioning is the variable bottleneck). The recovery path for failures redundancy *cannot* cover (operator error; a bad change GitOps faithfully propagates). A *failover* RTO is a different, smaller number — see the matrix below. |
 | **SLI** | request success rate, request latency p95 | Emitted by the app over OpenTelemetry; the dashboard's RED panels. |
 | **SLO** (posture) | 5xx rate < 5%, p95 latency < 1 s | The alert-rule thresholds in `platform/grafana.tf` are the SLO line — breaching them pages. |
 | **SLA** | none committed | A take-home reference build, not a contracted service. The architecture's posture supports an SLA conversation; no number is promised. |
@@ -32,12 +32,15 @@ the recovery.
 | **Pod dies** | kubelet liveness probe | Kubernetes recreates the pod from the Deployment | seconds |
 | **Node dies** | node controller | The managed node group replaces the node; pods reschedule | ~2–5 min |
 | **AZ impaired** | ALB health checks | Surviving AZs absorb traffic; the Deployment's replicas span AZs | seconds–minutes, no operator action |
-| **Region lost** | operator / external monitoring | **The drill scenario** — rebuild the region from IaC; ArgoCD reconverges the workload from git | **20–30 min** |
-| **Multi-region failover** | — | *Not implemented* — single region deployed. Pattern X makes a second region a one-line data change; failover would then be Route 53 latency records + health checks (~1–2 min). See [`tradeoffs.md`](tradeoffs.md). |
+| **Region lost** | operator / external monitoring | **The drill scenario** — rebuild the region from IaC; ArgoCD reconverges the workload from git | **11m 21s** (drill-measured) |
+| **Multi-region failover** | Route 53 evaluates the ALB alias records' target health | Route 53 drops the unhealthy region's latency record; queries resolve to the surviving region | ~1–2 min (health detection + DNS TTL; not separately timed) |
 
-A single-region deployment means a region loss **is** a service outage until
-the rebuild completes — the honest failure mode of a cost-bounded take-home.
-It is documented, not hidden.
+Two regions are deployed (`eu-central-1` + `eu-west-1`), so a single region
+loss is absorbed by the survivor — the 2026-05-17 drill verified the surviving
+region served every probe (61/61) through the drilled region's full teardown
+and rebuild. The cold-rebuild RTO above is the recovery path for what
+redundancy *cannot* absorb: a correlated failure — operator error, or a bad
+change GitOps propagates to every region — or restoring the lost region itself.
 
 ## The drill — region rebuild
 
@@ -71,11 +74,13 @@ confirmation before Phase 1.
 
 ### Measured cold-rebuild RTO breakdown
 
-EKS control-plane provisioning ~15 min · managed node group + addons (CNI,
-CoreDNS, kube-proxy) ~5 min · ALB target health + DNS propagation ~1–3 min ·
-ArgoCD sync ~30 s. The 20–30 min total is dominated by EKS cold-provisioning —
-a fixed AWS cost, not something this repo can optimise. See
-[ADR-05](adr/05-disaster-recovery.md).
+The 2026-05-17 drill ([`evidence/DR_REPORT.md`](evidence/DR_REPORT.md)) measured
+**11m 21s**, region-down to greeter pods Ready: Terraform re-apply (VPC + EKS
+control plane + node group + addons + ArgoCD + Alloy + external-dns) 11m 3s ·
+ArgoCD reconverge 18 s. The measurement stops at pods Ready — ALB target health
++ DNS settle a few minutes after. EKS control-plane provisioning dominates the
+re-apply and is variable, so ~20–30 min stays the conservative planning budget.
+See [ADR-05](adr/05-disaster-recovery.md).
 
 ## Validation — evidence
 

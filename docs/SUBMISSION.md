@@ -37,7 +37,7 @@ Stated up front, because they frame every architectural choice.
 | | Target | Basis |
 |---|---|---|
 | **RPO** | **~0 — N/A** | Stateless by design — no persistent data, nothing to lose. The metric a stateful system fights for is trivially satisfied here. |
-| **RTO — cold rebuild** | **20–30 min** | Measured worst case: rebuild a region from zero (teardown → IaC re-apply → ArgoCD reconverge). Dominated by EKS cold-provisioning. Distinct from a *failover* RTO — see [ADR-05](adr/05-disaster-recovery.md). |
+| **RTO — cold rebuild** | **11m 21s** (measured) | The 2026-05-17 drill rebuilt a region from zero in 11m 21s ([`evidence/DR_REPORT.md`](evidence/DR_REPORT.md)) — to greeter pods Ready. ~20–30 min is the conservative budget (EKS control-plane provisioning is the variable bottleneck). Distinct from a *failover* RTO — see [ADR-05](adr/05-disaster-recovery.md). |
 | **SLI** | request success rate, p95 latency | App-emitted over OpenTelemetry; the dashboard's RED panels. |
 | **SLO** (posture) | 5xx < 5%, p95 < 1 s | The alert-rule thresholds — breaching them pages. |
 | **SLA** | none committed | A reference build, not a contracted service. The posture supports the conversation; no number is promised. |

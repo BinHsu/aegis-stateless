@@ -20,14 +20,22 @@ of the stateless architecture.
 **The measured number is a *cold-rebuild* RTO** — the time to reconstruct the
 region from zero (Terraform state + git), with no warm standby. Naming it
 matters: a *failover* RTO and a *cold-rebuild* RTO are different numbers for
-different failures. It is **20-30 minutes**, broken down by what dominates:
+different failures.
 
-| Phase | Time |
+The 2026-05-17 drill measured **11m 21s** (region down → greeter pods Ready):
+
+| Phase | Measured |
 |---|---|
-| EKS managed control-plane provisioning | ~15 min |
-| Managed node group ready + addons (CNI, CoreDNS, kube-proxy) | ~5 min |
-| ALB target group healthy + DNS propagation | ~1-3 min |
-| ArgoCD sync of the workload from git | ~30 s |
+| Terraform re-apply — VPC + EKS control plane + node group + addons + ArgoCD + Alloy + external-dns | 11m 3s |
+| ArgoCD reconverge — greeter synced from git, pods Ready | 18 s |
+| **Cold-rebuild RTO** | **11m 21s** |
+
+Two honest caveats. The measurement stops at *pods Ready* — the public endpoint
+(ALB target health + DNS propagation) settles a few minutes after, not
+separately timed. And one drill is one sample: EKS control-plane provisioning
+dominates the re-apply and is variable, so **~20-30 min stays the conservative
+planning budget** — the drill simply observed the faster end. Evidence:
+[`../evidence/DR_REPORT.md`](../evidence/DR_REPORT.md).
 
 **The drill is a defined cycle.** `make destroy-region` tears down one region's
 `regional` stack; `make regional-one` rebuilds it; ArgoCD reconciles the
@@ -38,19 +46,21 @@ report to `docs/evidence/`. The full failure-mode matrix and procedure are in
 
 ## Consequences
 
-- The RTO number is defensible: a reviewer sees the EKS control plane is the
-  bottleneck and the GitOps layer (ArgoCD) is negligible — ~15 of the ~25
-  minutes is a fixed AWS cost this repo cannot optimise.
+- The RTO number is defensible because it is measured and attributed: the
+  Terraform re-apply (EKS control-plane provisioning dominates) is the
+  bottleneck at 11m 3s, and the GitOps layer is negligible — ArgoCD reconverged
+  in 18 s. The dominant cost is a fixed AWS provisioning time this repo cannot
+  optimise.
 - Cheaper failures recover faster and more automatically: a dead pod
   (Kubernetes, seconds), a dead node (managed node group, ~2-5 min), an
   impaired AZ (multi-AZ replicas absorb it). Only region loss needs the
   IaC + GitOps recovery path, so that is the drill scenario.
-- The cold-rebuild RTO is the number that matters most: it is the recovery
-  path for the failure class redundancy *cannot* cover — operator error, or a
-  bad change GitOps faithfully propagates to every replica. Multi-region
-  failover (designed via Pattern X, not deployed) is a different, smaller
-  number (~1-2 min) for a narrower failure: a region dying. The drill measures
-  reconstructability, not redundancy.
+- The cold-rebuild RTO is the number that matters for the failure class
+  redundancy *cannot* cover — operator error, or a bad change GitOps faithfully
+  propagates to every region. Multi-region failover (deployed — two regions,
+  external-dns latency records with evaluate-target-health) is a different,
+  smaller number (~1-2 min) for the narrower failure of one region dying; the
+  drill's surviving-region probe confirmed the survivor served 61/61 throughout.
 - The drill proves the real claim: Terraform state + git are the source of
   truth; the workload converges from zero with no manual `kubectl`.
 - Evidence is committed to git, not left in a live environment — the cluster is

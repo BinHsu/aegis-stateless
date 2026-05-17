@@ -22,9 +22,9 @@ cluster (destroyed and rebuilt in every DR drill).
 **Region topology is data.** `regions.auto.tfvars.json` at the repo root holds
 `platform_region` plus a `regions{}` map — each entry carrying `enabled`, CIDR,
 and node sizing. JSON, not HCL, because both Terraform and `jq` parse it
-natively; `enabled: false` expresses "designed but not deployed" (JSON has no
-comments). One region is enabled (`eu-central-1`); a second is present as a
-complete disabled entry.
+natively; an `enabled` flag per region records which regions are live (JSON has
+no comments). Both `eu-central-1` and `eu-west-1` are enabled and deployed;
+flipping one `enabled` flag is the entire change to add or drop a region.
 
 **Multi-region is realised by external orchestration**, not in-Terraform
 iteration. Terraform's `provider for_each` would generate one provider alias
@@ -53,10 +53,10 @@ per-region state key (`regional/<region>/terraform.tfstate`).
 - A DR drill destroys `regional` only; `platform` is untouched — the drill
   rebuilds the workload, not the world. Each environment has its own state and
   lock, so blast radii stay independent.
-- Honest failure mode: with one region deployed, a region-wide outage is a
-  service outage — there is no cross-region failover. The cost of that deferral
-  is one line in a data file, not a redesign. Stated plainly in
-  [`tradeoffs.md`](../tradeoffs.md).
+- Two regions are deployed, so a single region's loss is absorbed by the
+  survivor — the 2026-05-17 DR drill verified this (ADR-05). What redundancy
+  cannot absorb — a correlated failure, or operator error — is the cold-rebuild
+  RTO's job. Adding or dropping a region stays a one-line data change.
 - The orchestration logic lives in the Makefile + workflows, not in Terraform.
   Terragrunt would absorb it; deferred until cross-account or deeper DAG
   dependencies justify the tool.
