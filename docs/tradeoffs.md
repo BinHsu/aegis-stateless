@@ -148,16 +148,17 @@ torn down after the demo — accepted for the take-home, recorded here, not hidd
   build artifact — so stop CI writing it into git. The CI commit-back then
   writes only `newTag` (a commit SHA, not sensitive); the registry is supplied
   at deploy time. This is the same fix as region-aware ECR — see
-  [Container image registry](#container-image-registry): a containerd registry
-  mirror, a Kyverno image-mutation policy, or a Helm `image.registry` value.
-  Injecting `newName` via the ArgoCD `Application`'s `kustomize.images` does
-  *not* work — that override runs `kustomize edit set image`, which replaces
-  the whole image entry and drops the CI-bumped `newTag`. The account ID then
-  lives only in Terraform state / node config / the cluster, never in git.
+  [Container image registry](#container-image-registry): package the greeter as
+  a Helm chart with `image.registry` as a per-region value, or mutate the
+  registry in at admission with Kyverno. Injecting `newName` via the ArgoCD
+  `Application`'s `kustomize.images` does *not* work — that override runs
+  `kustomize edit set image`, which replaces the whole image entry and drops
+  the CI-bumped `newTag`. The account ID then lives only in Terraform state /
+  the cluster, never in git.
 - **Trigger**: making the repo public for portfolio circulation.
-- **Effort**: folded into the "Container image registry" fix — ~0.5 day
-  (containerd mirror) / ~1 day (Helm migration). Cleans HEAD onward; the
-  account ID remains in prior commits unless history is also rewritten.
+- **Effort**: folded into the "Container image registry" fix — ~1 day (Helm
+  migration). Cleans HEAD onward; the account ID remains in prior commits
+  unless history is also rewritten.
 
 ---
 
@@ -214,15 +215,22 @@ region's pods pull the image cross-region.
   Kustomize couples them in one `images:` entry, and ArgoCD's
   `kustomize.images` override replaces the whole entry — pinning the tag
   there would freeze out the CI bump and break GitOps auto-sync.
-- **Production**: (a) node-level containerd registry mirrors — each
-  region's nodes redirect a region-agnostic image reference to the local
-  ECR, manifest untouched; or (b) package the greeter as a Helm chart,
-  where `image.registry` and `image.tag` are separate values that compose.
-  A globally distributed registry (ghcr.io, a CDN-fronted Harbor) sidesteps
-  the problem entirely.
+- **Production**: package the greeter as a Helm chart — `image.registry` and
+  `image.tag` are then independent values that compose: a per-region
+  Application sets the registry, CI bumps the tag. Staying on Kustomize, the
+  same registry/tag split is reachable through an ArgoCD Config Management
+  Plugin (`kustomize build | envsubst`) with a per-region `${ECR_REGISTRY}`
+  placeholder filled from the Application's `plugin.env`. A node-level containerd
+  registry mirror looks tempting (redirect a region-agnostic ref at the node,
+  manifest untouched) but does **not** cleanly cover cross-region *private*
+  ECR: the EKS credential provider issues an ECR auth token for the image
+  ref's region, not the mirror's, so the mirrored pull fails auth and falls
+  back to the cross-region source. Making it work needs a credential-provider
+  helper — a known EKS limitation, not a quick win. A globally distributed
+  registry (ghcr.io, a CDN-fronted Harbor) sidesteps the problem entirely.
 - **Trigger**: multi-region traffic where cross-region pull cost or latency
   is material.
-- **Effort**: ~0.5 day (containerd mirror) / ~1 day (Helm migration).
+- **Effort**: ~1 day (Helm migration).
 
 ---
 
