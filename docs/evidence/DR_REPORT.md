@@ -34,18 +34,18 @@ latency records with evaluate-target-health drop the drilled region's
 record when its ALB is gone — is verifiable from an operator machine
 with `dig @<zone-nameserver> greeter.aegis-stateless.test`.
 
-## Grafana evidence — capture manually
+## Grafana evidence
 
-The live dashboard is not durable evidence (the cluster is torn down after the
-demo; Grafana Cloud's free tier retains data ~14 days). Capture it now, while
-the drill window is still queryable:
+The live dashboard is not durable evidence — the cluster is torn down after the
+demo and Grafana Cloud's free tier retains data only ~14 days. Two screenshots
+of the `aegis-greeter — overview` dashboard over the drill window
+(2026-05-17T10:48:28Z → 2026-05-17T11:08:44Z) are committed alongside this
+report:
 
-1. Open the `aegis-greeter-overview` dashboard.
-2. Set the time range to **2026-05-17T10:48:28Z → 2026-05-17T11:08:44Z**.
-3. Screenshot the Request rate / Latency / Pod-readiness panels — they show the
-   metric drop at teardown, the flat gap through the rebuild, and the recovery
-   at reconverge.
-4. Save as `grafana-dr-curve.png` in this directory and commit it.
+- `grafana-dr-curve.png` — the DR curve: the drilled region's metrics drop at
+  teardown, flatline through the rebuild, and recover at reconverge.
+- `grafana-dr-multi-region.png` — the per-region view (via the `region`
+  template variable): eu-central-1 drops while eu-west-1 stays flat.
 
 ## CLI log
 

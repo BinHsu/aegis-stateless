@@ -185,7 +185,9 @@ the drill window is still queryable:
    they show the drilled region's pods/nodes drop at teardown, the flat gap
    through the rebuild, and the recovery at reconverge. Request-rate / latency
    panels need live traffic — without a load generator they stay flat.
-4. Save as \`grafana-dr-curve.png\` in this directory and commit it.
+4. Save the screenshots into this directory (e.g. \`grafana-dr-curve.png\` for
+   the DR curve, \`grafana-dr-multi-region.png\` for the per-region view) and
+   commit them.
 
 ## CLI log
 
