@@ -1,6 +1,6 @@
 module "irsa_external_dns" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.44"
+  version = "~> 6.6"
 
   role_name = "aegis-stateless-external-dns-${var.region}"
 
