@@ -85,7 +85,12 @@ jobs:
     # roles + GitHub OIDC provider don't exist, so OIDC role assumption
     # can't succeed — skipping keeps the pipeline green instead of
     # failing on an unavoidable bootstrap-ordering gap.
-    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' }}
+    #
+    # Also skips on Dependabot pull requests: they run with a read-only
+    # GITHUB_TOKEN and no repository secrets, so AWS_INFRA_CI_ROLE_ARN is
+    # empty and configure-aws-credentials fails. A skipped plan is already
+    # an accepted outcome for the summary gate, so this keeps them green.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v4
@@ -139,8 +144,8 @@ jobs:
     name: "plan-regional (${{ matrix.region }})"
     runs-on: ubuntu-latest
     needs: [setup, lint-validate]
-    # See plan-platform — gated on the operator-set BOOTSTRAP_COMPLETE.
-    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' && needs.setup.outputs.enabled_regions != '[]' }}
+    # See plan-platform — same gating, Dependabot skip included.
+    if: ${{ vars.BOOTSTRAP_COMPLETE == 'true' && github.actor != 'dependabot[bot]' && needs.setup.outputs.enabled_regions != '[]' }}
     strategy:
       fail-fast: false
       matrix:
