@@ -204,7 +204,8 @@ jobs:
     name: comment-plan-diff
     runs-on: ubuntu-latest
     needs: [plan-platform, plan-regional]
-    if: ${{ always() && github.event_name == 'pull_request' && vars.BOOTSTRAP_COMPLETE == 'true' }}
+    # Same Dependabot exclusion as the plan jobs it reports on.
+    if: ${{ always() && github.event_name == 'pull_request' && vars.BOOTSTRAP_COMPLETE == 'true' && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v8
